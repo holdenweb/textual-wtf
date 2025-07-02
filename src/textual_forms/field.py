@@ -27,11 +27,11 @@ class Field:
 
     @property
     def value(self):
-        return self.widget.value
+        return self.widget.value if self.widget.value else None
 
     @value.setter
     def value(self, value):  # Only works with string-valued widgets
-        self.widget.value = str(value)
+        self.widget.value = '' if value is None else str(value)
 
     def to_widget_value(self, value: Any) -> Any:
         return value

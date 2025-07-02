@@ -32,9 +32,10 @@ async def test_empty_none():
     field = StringField(id="sf", required=False, value="something")
     app = one_field_app(field)()
     async with app.run_test() as pilot:
-        field.value = None
-        assert field.widget.value == ""
-        assert field.value is None
+        test_widget = app.query_one("#sf")
+        test_widget.field.value = None
+        assert test_widget.value == ""
+        assert test_widget.field.value is None
 
 @pytest.mark.skip  # Skip until https://github.com/Textualize/textual/issues/5917 fixed
 @pytest.mark.asyncio(loop_scope="function")
