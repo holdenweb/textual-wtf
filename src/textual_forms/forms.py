@@ -12,9 +12,14 @@ from .exceptions import FieldError
 
 class ComposedForm:
     """Marker for composed form inclusion"""
-    def __init__(self, form_class: type, prefix: str = ''):
+    def __init__(self, form_class: type, prefix: str = '', title: Optional[str] = None):
         self.form_class = form_class
         self.prefix = prefix
+        # If no title provided but prefix exists, capitalize prefix as title
+        if title is None and prefix:
+            self.title = prefix.capitalize()
+        else:
+            self.title = title
 
 
 class FormMetaclass(type):
@@ -69,11 +74,12 @@ class FormMetaclass(type):
                     all_fields.append((new_name, new_field))
 
                     # Track composition metadata
-                    if prefix:
+                    if prefix or composed.title:
                         composition_metadata[new_name] = {
                             'composed_from': attr_name,
                             'prefix': prefix,
-                            'original_name': field_name
+                            'original_name': field_name,
+                            'title': composed.title
                         }
 
         # Check for name collisions
@@ -110,6 +116,14 @@ class RenderedForm(VerticalScroll):
         background: blue;
         height: auto;
         margin: 1;
+    }
+
+    .subform-title {
+        background: white;
+        color: black;
+        height: auto;
+        padding: 0 1;
+        margin: 1 0 0 0;
     }
 
     .form-field {
@@ -170,8 +184,21 @@ class RenderedForm(VerticalScroll):
                 id="form-title"
             )
 
+        # Track which subforms we've already rendered headers for
+        rendered_subforms = set()
+        
         # Render each field
         for name, field in self.form.fields.items():
+            # Check if this field is part of a composed subform with a title
+            metadata = self.form._composition_metadata.get(name)
+            if metadata and metadata.get('title'):
+                subform_id = metadata['composed_from']
+                
+                # Render subform title once per subform
+                if subform_id not in rendered_subforms:
+                    yield Static(metadata['title'], classes="subform-title")
+                    rendered_subforms.add(subform_id)
+            
             with Vertical(classes="form-field"):
                 if field.label:
                     yield Label(field.label)
@@ -252,13 +279,15 @@ class BaseForm:
             field.form = self
 
     @classmethod
-    def compose(cls, prefix: str = '') -> ComposedForm:
+    def compose(cls, prefix: str = '', title: Optional[str] = None) -> ComposedForm:
         """
         Create a composition marker for including this form in another
 
         Args:
             prefix: Optional prefix for field names (e.g., 'billing' creates 'billing_street')
                    Empty string or no prefix means fields are added without prefixing
+            title: Optional title for the subform section. If not provided and prefix exists,
+                   the prefix will be capitalized and used as the title
 
         Returns:
             ComposedForm marker for use in form class definition
@@ -269,11 +298,11 @@ class BaseForm:
                 city = StringField()
 
             class OrderForm(Form):
-                billing = AddressForm.compose(prefix='billing')   # Creates billing_street, billing_city
-                shipping = AddressForm.compose(prefix='shipping') # Creates shipping_street, shipping_city
+                billing = AddressForm.compose(prefix='billing')   # Creates billing_street, billing_city with "Billing" title
+                shipping = AddressForm.compose(prefix='shipping', title='Ship To') # Custom title
                 notes = StringField()
         """
-        return ComposedForm(cls, prefix=prefix)
+        return ComposedForm(cls, prefix=prefix, title=title)
 
     def get_data(self) -> Dict[str, Any]:
         """Get current values from all fields"""
