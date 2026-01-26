@@ -1,166 +1,151 @@
-## textual_forms
+# Textual Forms
 
-This is the beginning of a forms package for textual. It provides a
-declarative framework for data entry and editing that is usable and useful
-enough to have people extend it rather than craft their own. With `uv`
-installed you can run the demo program without cloning the repository with
-the `uvx` command.
+A declarative, extensible forms library for [Textual](https://textual.textualize.io/) TUI applications.
 
-    uvx --from git+https://github.com/holdenweb/textual-forms.git forms-app
+## Features
 
-This should produce a window that looks something like the one
-below. Terminate the run with CTRL-Q. The program is designed to let you
-experiment. Please feel free to exercise it, tweak it and provide feedback as
-issues against the repo, on the Textual Discord, or as email to
-steve@holdenweb.com.
+- **Declarative Syntax**: Define forms using class-based field declarations
+- **Flexible Widget Assignment**: Use different widgets for the same field type
+- **Easy to Extend**: Add custom field types and widgets with clear patterns
+- **Built-in Validation**: Comprehensive validation with helpful error messages
+- **Simple Integration**: Drop forms into existing Textual apps with minimal code
 
-![Screenshot of textual-forms in action](images/screenshot.gif "textual_forms demo")
+## Installation
 
-String-based inputs are validated on any change, and validation problems are reported
-underneath the field in question. Pressing the form's Submit button checks that all
-fields are valid, and if so posts a `Form.Submitted` Message; otherwise it
-displays a notification to fix the fields. Pressing Cancel posts a
-`Form.Cancelled` Message. Both Messages provide a reference to the form.
-
-![Screenshot of validation messages](images/validation.gif "textual_forms validation")
-
-When the demo program receives `FormSubmitted` it notifies you of the values
-you've entered as a dictionary, keyed by the field names.
-
-![Screenshot of forms result](images/results.gif "textual_forms validation")
-
-Below is the source for the form from the demo program, which
-contains an example of each of the currently-supported field types.
-
-```python
-from textual_forms.field import IntegerField, StringField, ChoiceField, BooleanField, TextField
-from textual_forms.form import Form
-from textual_forms.validators import EvenInteger, Palindromic
-from textual.validation import Number
-
-
-class TestForm(Form):
-    name = StringField(
-        placeholder="Name (palindrome)",
-        required=True,
-        validators=[Palindromic()],
-        id="form-name",
-    )
-    age = IntegerField(
-        placeholder="Age (must be even)",
-        required=False,
-        validators=[Number(minimum=0, maximum=130), EvenInteger()],
-        id="form-age",
-    )
-    description = TextField(
-        required=True,
-        id="form-description",
-        text="This is a multi-line TextField",
-    )
-
-    is_active = BooleanField(label="Active?", id="form-isactive")
-
-    choice = ChoiceField(
-        prompt="Select pill colo(u)r",
-        choices=[("blue", "Blue"), ("red", "Red")],
-        label="Selection",
-        id="form-choice",
-    )
+```bash
+uv pip install -e .
 ```
 
-### Testing
+## Quick Start
 
-The Makefile offers a few targets to assist developers.
-`make test` runs pytest, reporting each test on its own line.
-`make coverage` runs pytest and reports on current test suite coverage.
+```python
+from textual.app import App
+from textual_forms import Form, StringField, IntegerField
 
-`make release` prints the current release number.
-`make release version=X.Y.Z` creates a new release tagged as `rX.Y.Z` locally.
-New releases must be greater than their precursors.
+class UserForm(Form):
+    name = StringField(label="Name", required=True)
+    age = IntegerField(label="Age", min_value=0, max_value=130)
 
-Still missing is a `publish` target that will push the latest release,
-and the new tag, to GitHub before publishing it on PyPi.
-This last effect may well be most easily achieved via Github actions.
+class MyApp(App):
+    def compose(self):
+        yield UserForm().render()
+    
+    def on_form_submitted(self, event: Form.Submitted):
+        data = event.form.get_data()
+        self.notify(f"Hello, {data['name']}!")
 
-## Contribute!!
+if __name__ == "__main__":
+    MyApp().run()
+```
 
-I have neither the time nor the energy to support this effort alone.
-Various community members have been kind enough to offer encouragement,
-and my hope is that this initial stimulus will inspire the `textual` community to help with
-discussions on Discord, suggestions, issues - indeed, any kind of engagement.
-Pull requests are always most valuable, but at this stage discussions,
-suggestions and issues are just as necessary!
+## Field Types
 
-## Current State of Play
+- `StringField` - Text input (single line)
+- `TextField` - Text input (multi-line)
+- `IntegerField` - Integer input with validation
+- `BooleanField` - Checkbox
+- `ChoiceField` - Select dropdown
 
-I have already identified a number of high-priority issues which are [logged
-in the repository](https://github.com/holdenweb/textual-forms/issues). Some
-of these notes are outdated and do not necessarily reflect current thinking -
-for example, a FileField could (other than for textual-web) simply provide a path
-to local filestore.
+## Running Examples
 
-Differences between the desktop and textual-web environments will need
-careful consideration. The library is now at the stage where it's a usable
-tool for a limited subclass of data entry and editing tasks.
+```bash
+# Basic example
+uv run python examples/basic_form.py
 
-## Next Steps
+# Advanced example with custom fields
+uv run python examples/advanced_form.py
 
-1. Document the existing functionality to encourage adoption.
-1. Document the addition of a new field type to encourage extension.
-1. Enhance release process and extend to publishing via PyPI.
-1. Write papers and present talks about Textual and this work.
-1. Get people to use textual-forms!
+# User registration form
+uv run python examples/user_registration.py
+```
 
-### Architecture
+## Development
 
-The Form class is the basis of the library.
-Forms contain one or more Fields,
-each of which is associated with a Widget instance.
-Each Field type has a default widget type.
-The widdget can also be passed as an argument
-when the Field instance is created.
+```bash
+# Install with dev dependencies
+uv pip install -e ".[dev]"
 
-When you create a form instance you can optionally provide a `data` mapping.
-The fields whose names are keys in the mapping are populated with the
-associated value.
+# Run tests
+uv run pytest
 
-Field types based on the Input widget are validated whenever their values
-change. If a validator on a field fails then the validation message is
-displayed underneath the field.
+# Run tests with coverage
+uv run pytest --cov
 
-Create a Form subclass, and within it bind a number of Field instances to
-class variables. The form's render method returns a Vertical in which each of
-the fields' widgets in turn is rendered, followed by one or more buttons in a
-row (usually Cancel and Submit, but a later API may allow modifications). You
-can, of course, overwrite the Form's `render` method and styling to display
-the widgets in any way you wish.
+# Run specific test
+uv run pytest tests/test_fields.py -v
+```
 
-Setting a field's value inside the program propagates the change to the
-widget's display. A field's value is also modified by changes to the widget
-value from the TUI. After any programmatic change the field's validators will
-be called, and any resulting ValidationErrors cause messages to display under
-the field.
+## Architecture
 
-When a Form's `render` method is called all fields
-whose names appear as keys in the `data` dict are set to the given
-values; fields not included in the data are set to their default values, if
-specified. If any fields are left without a value a ValueError exception is raised.
-Otherwise the form components are mounted and become available for user
-interaction.
+The library uses a three-layer architecture:
 
+1. **Fields** - Handle data conversion and validation logic
+2. **Widgets** - Handle UI rendering and user interaction  
+3. **Forms** - Coordinate fields and widgets into complete forms
 
-### Specific refactorings
+See `REFACTORING_GUIDE.md` for detailed architecture documentation.
 
-This package is currently in the alpha stage, with the proof-of-concept
-demonstrating a clear ability to turn Form subclasses into interactive
-Textual objects. The existing "framework" needs to be elaborated to improve
-and formalise the Form-Field and the Field-Widget interfaces.
+## License
 
-Astute readers will notice there is limited styling on the form components.
-The proof-of-concept form could be improved in both styling and layout. The
-appearance of `Select`s in particular could benefit from some work.
+MIT License - see LICENSE file for details.
 
-Otherwise, the primary needs are some decent docs and a greater diversity
-of `Field` types to increase the versatility of the library.
-After almost six months, it's now nearly capable of doing the job
-I started writing it to do!
+## Choice Field Format
+
+When using `ChoiceField`, provide choices as a list of `(value, label)` tuples:
+
+```python
+country = ChoiceField(
+    label="Country",
+    choices=[
+        ("us", "United States"),  # value, label
+        ("uk", "United Kingdom"),
+        ("ca", "Canada"),
+    ]
+)
+```
+
+- The **value** (first element) is what gets stored in the form data
+- The **label** (second element) is what the user sees in the dropdown
+
+When the form is submitted, `form.get_data()['country']` will contain the value (e.g., `"us"`), not the label.
+
+## Testing Your Forms
+
+Textual widgets require an active application context to render. The library provides utility methods to test forms without rendering:
+
+```python
+# Test form structure without app context
+form = UserForm()
+
+# Get all fields
+fields = form.get_fields_dict()
+
+# Get field names in order
+names = form.get_field_names()
+
+# Get specific field
+email_field = form.get_field("email")
+assert email_field.required is True
+
+# Create widgets without rendering (for basic testing)
+widgets = form.create_widgets()
+
+# Test data handling
+form.set_data({"name": "John", "age": 30})
+data = form.get_data()
+```
+
+For full integration tests with rendering, use Textual's testing utilities:
+
+```python
+@pytest.mark.asyncio
+async def test_form():
+    class TestApp(App):
+        def compose(self):
+            yield UserForm().render()
+    
+    app = TestApp()
+    # Use app.run_test() for full testing
+```
+
+See `docs/TESTING_GUIDE.md` for complete testing documentation.

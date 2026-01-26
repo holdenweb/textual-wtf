@@ -1,40 +1,60 @@
 [project]
 name = "textual-forms"
-version = "0.7.10"
-description = "A prototype forms package for textual"
+version = "0.8.0a1"
+description = "A declarative forms library for Textual TUI applications"
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies = [ "pytest-asyncio>=1.0.0", "textual>=3.5.0",]
-[[project.authors]]
-name = "Steve Holden"
-email = "steve@holdenweb.com"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Steve Holden", email = "steve@holdenweb.com"}
+]
+keywords = ["textual", "tui", "forms", "terminal", "validation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 
-[dependency-groups]
-dev = [ "pytest>=8.3.5", "pytest-asyncio>=0.26.0", "pytest-cov>=6.1.1", "ruff>=0.11.7", "semver>=3.0.4", "textual-dev>=1.7.0", "toml>=0.10.2",]
-docs = [ "mkdocs>=1.6.1",]
+dependencies = [
+    "textual>=0.47.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+]
 
 [build-system]
-requires = [ "hatchling",]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[project.scripts]
-forms-app = "textual_forms.demo:main"
-
-[tool.uv]
-[[tool.uv.index]]
-name = "testpypi"
-url = "https://test.pypi.org/simple/"
-publish-url = "https://test.pypi.org/legacy/"
-explicit = true
-
 [tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "session"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --cov=textual_forms --cov-report=term-missing --cov-report=html"
 
-[tool.hatch.build.targets.sdist]
-only-include = [ "src/textual_forms",]
+[tool.coverage.run]
+source = ["src/textual_forms"]
+omit = ["*/tests/*", "*/examples/*"]
 
-[tool.hatch.build.targets.sdist.sources]
-"src/textual_forms" = "textual_forms"
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
 
-[tool.hatch.build.targets.wheel.sources]
-"src/textual_forms" = "textual_forms"
+[dependency-groups]
+dev = [
+    "textual-dev>=1.8.0",
+]
