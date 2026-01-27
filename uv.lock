@@ -1051,7 +1051,7 @@ wheels = [
 
 [[package]]
 name = "textual-forms"
-version = "0.8.0a3"
+version = "0.8.0a4"
 source = { editable = "." }
 dependencies = [
     { name = "textual" },
