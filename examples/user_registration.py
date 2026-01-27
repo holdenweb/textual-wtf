@@ -5,6 +5,7 @@ from textual.containers import Container, Vertical, Center
 from textual.widgets import Header, Footer, Static, Button
 from textual_forms import Form, StringField, BooleanField
 from textual_forms.validators import EmailValidator
+from results_screen import ResultsDisplayScreen
 
 
 class RegistrationForm(Form):
@@ -28,88 +29,30 @@ class RegistrationForm(Form):
     )
 
 
-class ResultsScreen(Screen):
-    """Screen to display form results"""
-    
-    CSS = """
-    ResultsScreen {
-        align: center middle;
-    }
-    
-    #results-container {
-        width: 60;
-        height: auto;
-        border: heavy green;
-        padding: 1;
-    }
-    
-    #results-title {
-        background: green;
-        color: white;
-        width: 100%;
-        height: 1;
-        content-align: center middle;
-        margin-bottom: 1;
-    }
-    
-    #results-data {
-        background: $panel;
-        padding: 1;
-        margin: 1 0;
-    }
-    
-    #buttons {
-        align: center middle;
-        margin-top: 1;
-    }
-    
-    Button {
-        margin: 0 1;
-    }
-    """
-    
-    def __init__(self, title: str, data: dict = None):
-        super().__init__()
-        self.result_title = title
-        self.data = data
-    
+class ResultsScreen(ResultsDisplayScreen):
+    """Utility Screen to display form results"""
+
     def compose(self) -> ComposeResult:
         with Container(id="results-container"):
             yield Static(self.result_title, id="results-title")
-            
-            if self.data:
-                # Format data nicely
-                lines = []
-                for key, value in self.data.items():
-                    lines.append(f"{key}: {value}")
-                yield Static("\n".join(lines), id="results-data")
-            else:
-                yield Static("Form was cancelled", id="results-data")
-            
-            with Center(id="buttons"):
-                yield Button("New Form", variant="primary", id="new")
-                yield Button("Exit", id="exit")
-    
-    def on_button_pressed(self, event: Button.Pressed):
-        if event.button.id == "new":
-            self.dismiss(True)
-        elif event.button.id == "exit":
-            self.app.exit()
+
+            yield from self.show_data()
+            yield from self.buttons()
 
 
 class RegistrationApp(App):
     """User registration application"""
-    
+
     TITLE = "User Registration"
     BINDINGS = [
         ("q", "quit", "Quit"),
     ]
-    
+
     CSS = """
     Container {
         align: center middle;
     }
-    
+
     #info {
         width: 60;
         height: auto;
@@ -117,13 +60,13 @@ class RegistrationApp(App):
         padding: 1;
         border: solid blue;
     }
-    
+
     RenderedForm {
         width: 60;
         height: auto;
     }
     """
-    
+
     def compose(self) -> ComposeResult:
         yield Header()
         with Container():
@@ -135,37 +78,37 @@ class RegistrationApp(App):
                 self.form = RegistrationForm(title="Create Account")
                 yield self.form.render()
         yield Footer()
-    
+
     def on_form_submitted(self, event: Form.Submitted):
         """Handle successful registration"""
         data = event.form.get_data()
-        
+
         if not data['agree_terms']:
             self.notify(
                 "You must agree to the terms and conditions",
                 severity="error"
             )
             return
-        
+
         def check_reset(should_reset):
             if should_reset:
                 self.reset_form()
-        
+
         self.push_screen(ResultsScreen("Registration Successful!", data), check_reset)
-    
+
     def on_form_cancelled(self, event: Form.Cancelled):
         """Handle registration cancellation"""
         def check_reset(should_reset):
             if should_reset:
                 self.reset_form()
-        
+
         self.push_screen(ResultsScreen("Registration Cancelled", None), check_reset)
-    
+
     def reset_form(self):
         """Clear form and create fresh one"""
         old_form = self.query_one("RenderedForm")
         old_form.remove()
-        
+
         self.form = RegistrationForm(title="Create Account")
         self.query_one("Vertical").mount(self.form.render())
 
