@@ -1051,7 +1051,7 @@ wheels = [
 
 [[package]]
 name = "textual-forms"
-version = "0.8.0a1"
+version = "0.8.0a3"
 source = { editable = "." }
 dependencies = [
     { name = "textual" },
@@ -1066,6 +1066,9 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
     { name = "textual-dev" },
 ]
 
@@ -1079,7 +1082,12 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "textual-dev", specifier = ">=1.8.0" }]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "textual-dev", specifier = ">=1.8.0" },
+]
 
 [[package]]
 name = "textual-serve"
