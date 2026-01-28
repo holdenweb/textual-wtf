@@ -1,12 +1,10 @@
 """User registration form example with results display"""
 from textual.app import App, ComposeResult
-from textual.screen import Screen
-from textual.containers import Container, Vertical, Center
-from textual.widgets import Header, Footer, Static, Button
+from textual.containers import Container, VerticalScroll
+from textual.widgets import Header, Static
 from textual_forms import Form, StringField, BooleanField
 from textual_forms.validators import EmailValidator
 from results_screen import ResultsDisplayScreen
-
 
 class RegistrationForm(Form):
     """User registration form"""
@@ -68,16 +66,15 @@ class RegistrationApp(App):
     """
 
     def compose(self) -> ComposeResult:
-        yield Header()
+        #yield Header()
         with Container():
-            with Vertical():
+            with VerticalScroll():
                 yield Static(
                     "Welcome! Please fill out the registration form below.",
                     id="info"
                 )
                 self.form = RegistrationForm(title="Create Account")
                 yield self.form.render()
-        yield Footer()
 
     def on_form_submitted(self, event: Form.Submitted):
         """Handle successful registration"""

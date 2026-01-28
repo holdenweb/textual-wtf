@@ -78,14 +78,14 @@ When a form is rendered "Cancel" and "Submit" buttons are added at the
 bottom of the form. When clicked these buttons raise `Form.Cancelled`
 and `Form.Submitted` events respectively; each has a `form` attribute
 which can be used to access the form.
-This behaviour will be more onfigurable in later releases.
+This behaviour will be more configurable in later releases.
 
-## Form Data
+## Form Data
 
 Once rendered, the simplest way to access the form's data is
 by calling its `get_data` method.
-This returns a dictionary where fields values are keyed by the
-fields' fully-qualified names (i.e. including any sub-form prefixes,
+This returns a dictionary where fields' values are keyed by their
+fully-qualified names (i.e. including any sub-form prefixes,
 with underscores separating the named components).
 
 Users may find that in dealing with complex nested forms it
@@ -111,12 +111,13 @@ dotted access? Should alternatives be offered?
 
 Documentation of the foundational classes (Forms, Fields and Widgets) is the
 biggest current technical debt. The `examples` directory
-contains some code that we hope will help you to evalute textual_forms
-and help shape its direction with your feedback.
+contains some code that we hope will help you to evalute textual-forms
+and shape its direction with your feedback.
+
 Additional example programs, particularly those demonstrating the
 styling possibilities, would be especially valuable.
 
-## Running Examples
+## Running the Examples
 
 If you have `uv` installed you can run the examples from the repository using the command
 
@@ -135,8 +136,8 @@ where `<name>` is taken from the following table.
 In a clone of the repository the command `uv run examples/<name>` should suffice.
 
 `poetry` users should find that they can build a distribution (wheel and
-sdist) of the project with `poetry build`. There has been no further testing
-of other development environments.
+sdist) of the project with `poetry build` and install that wherever required.
+No further testing in other development environments has so far been reported.
 
 ## Development
 
@@ -148,7 +149,7 @@ uv venv
 uv run pytest
 
  Run specific test
-uv run pytest tests/test_fields.py -v
+uv run pytest tests/test_fields.py
 ```
 
 ## Architecture

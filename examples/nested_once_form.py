@@ -3,7 +3,7 @@
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Static
-from textual_forms import Form, StringField,
+from textual_forms import Form, StringField
 from results_screen import ResultsDisplayScreen
 
 
