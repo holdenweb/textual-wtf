@@ -1,17 +1,5 @@
 # Quick Start Guide
 
-Get up and running with Textual Forms in 5 minutes!
-
-## Installation
-
-```bash
-# Using uv (recommended)
-uv pip install textual-forms
-
-# Or using pip
-pip install textual-forms
-```
-
 ## Your First Form
 
 Create a file `my_form.py`:
@@ -29,12 +17,12 @@ class UserForm(Form):
 class MyApp(App):
     def compose(self):
         yield UserForm(title="User Info").render()
-    
+
     def on_form_submitted(self, event: Form.Submitted):
         data = event.form.get_data()
         self.notify(f"Hello, {data['name']}!")
         self.exit(data)
-    
+
     def on_form_cancelled(self, event: Form.Cancelled):
         self.exit()
 
@@ -47,7 +35,7 @@ if __name__ == "__main__":
 
 Run it:
 ```bash
-python my_form.py
+uv run my_form.py
 ```
 
 ## Common Patterns
@@ -106,11 +94,10 @@ class SignupForm(Form):
 ## Next Steps
 
 - Check out the [examples/](examples/) directory for more examples
-- Read the [REFACTORING_GUIDE.md](REFACTORING_GUIDE.md) for architecture details
-- See [README.md](README.md) for complete documentation
+- See [README.md](README.md) for more complete documentation
 
 ## Need Help?
 
-- Open an issue on GitHub
-- Check the documentation
 - Look at the example applications in `examples/`
+- Holler on the Textual Discord #help-wanted channel
+- Open an issue on GitHub

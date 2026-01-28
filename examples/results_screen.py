@@ -16,7 +16,7 @@ class ResultsDisplayScreen(Screen):
     }
 
     #results-container {
-        width: 80;
+        width: 80%;
         height: auto;
         border: heavy green;
         padding: 1;

@@ -186,19 +186,19 @@ class RenderedForm(VerticalScroll):
 
         # Track which subforms we've already rendered headers for
         rendered_subforms = set()
-        
+
         # Render each field
         for name, field in self.form.fields.items():
             # Check if this field is part of a composed subform with a title
             metadata = self.form._composition_metadata.get(name)
             if metadata and metadata.get('title'):
                 subform_id = metadata['composed_from']
-                
+
                 # Render subform title once per subform
                 if subform_id not in rendered_subforms:
                     yield Static(metadata['title'], classes="subform-title")
                     rendered_subforms.add(subform_id)
-            
+
             with Vertical(classes="form-field"):
                 if field.label:
                     yield Label(field.label)
@@ -375,6 +375,9 @@ class BaseForm:
 
         Raises:
             AmbiguousFieldError: If unqualified name matches multiple fields
+
+        XXX: Creating an iterator for the candidates would allow us
+             to detect the first and then easily error on a subsequent match.
         """
         # Try exact match first
         if name in self.fields:
