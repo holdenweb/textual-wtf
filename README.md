@@ -22,6 +22,29 @@ the feedback from which will inform further development.
 LLMs have been used in the development of this package, which has since been subjected to serious scrutiny by a seasoned professional programmer.
 Some of the remaining tests are of dubious value, and they will ultimately be removed.
 
+## Running the Examples
+
+If you have `uv` installed you can run the examples from the repository using the command
+
+`uvx --from git+https://github.com/holdenweb/textual-forms.git demo`
+
+You will see a menu of demonstration examples, each of which is also a standalone program in the src/textual_forms/demo directory.
+as shown below.
+
+|  Menu item                   | Program name           | Description                                  |
+|:-----------------------------|:-----------------------|:---------------------------------------------|
+| 1. Basic Form                | `basic_form.py`        | A simple form with basic fields              |
+| 2. Advanced Form             | `advanced_form.py`     | A more complex form with some validations    |
+| 3. User Registration         | `user_registration.py` | Rendered form integrated with other components        |
+| 4. Composition Example       | `nested_once_form.py`  | Simple nested form demonstration             |
+| 5. Multiply Included Example | `nested_twice_form.py` | Demonstrating form component re-use          |
+
+In a clone of the repository the command `uv run examples/<name>` should suffice.
+
+`poetry` users should find that they can build a distribution (wheel and
+sdist) of the project with `poetry build` and install that wherever required.
+No further testing in other development environments has so far been reported.
+
 ## Installation
 
 The package will be released to PyPI at version 0.8, at the time of writing in alpha.
@@ -116,28 +139,6 @@ and shape its direction with your feedback.
 
 Additional example programs, particularly those demonstrating the
 styling possibilities, would be especially valuable.
-
-## Running the Examples
-
-If you have `uv` installed you can run the examples from the repository using the command
-
-`uvx --from git+https://github.com/holdenweb/textual-forms.git python examples/<name>`
-
-where `<name>` is taken from the following table.
-
-| name                                | Description                                      |
-|:------------------------------------|:-------------------------------------------------|
-| `basic_form.py`                     | A simple form with basic fields                  |
-| `advanced_form.py`                  | A more complex form with validations             |
-| `user_registration.py`              | Form integrated with other components            |
-| `nested_once_form.py`               | Simple nested form demonstration                 |
-| `nested_twice_form.py`              | Demonstrating form component re-use              |
-
-In a clone of the repository the command `uv run examples/<name>` should suffice.
-
-`poetry` users should find that they can build a distribution (wheel and
-sdist) of the project with `poetry build` and install that wherever required.
-No further testing in other development environments has so far been reported.
 
 ## Development
 

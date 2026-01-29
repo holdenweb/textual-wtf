@@ -1,9 +1,10 @@
 """Basic form example with results display"""
 from textual.app import App, ComposeResult
 from textual.containers import Container, Center
+from textual.screen import Screen
 from textual.widgets import Static, Button
 from textual_forms import Form, StringField, IntegerField, BooleanField
-from results_screen import ResultsDisplayScreen  # Demo library utility
+from textual_forms.demo.results_screen import ResultsDisplayScreen  # Demo library utility
 
 class UserForm(Form):
     """Simple user registration form"""
@@ -23,7 +24,7 @@ class ResultScreen(ResultsDisplayScreen):
             yield from self.buttons()
 
 
-class BasicFormApp(App):
+class BasicFormScreen(Screen):
     """Demo app for basic form"""
 
     CSS_PATH = "basic_form.tcss"
@@ -36,20 +37,28 @@ class BasicFormApp(App):
         """Handle form submission"""
         data = event.form.get_data()
         # Show results screen
-        def check_reset(should_reset):
-            if should_reset:
-                self.reset_form()
 
-        self.push_screen(ResultScreen("Form Submitted Successfully!", data), check_reset)
+        def check_reset(cont):
+            if cont:
+                self.reset_form()
+            else:
+                self.dismiss(cont)
+
+        self.app.push_screen(
+            ResultScreen("Form Submitted Successfully!", data), check_reset
+        )
 
     def on_form_cancelled(self, event: Form.Cancelled):
         """Handle form cancellation"""
         # Show cancellation screen
-        def check_reset(should_reset):
-            if should_reset:
-                self.reset_form()
 
-        self.push_screen(ResultScreen("Form Cancelled", None), check_reset)
+        def check_reset(cont):
+            if cont:
+                self.reset_form()
+            else:
+                self.dismiss(cont)
+
+        self.app.push_screen(ResultScreen("Form Cancelled", None), check_reset)
 
     def reset_form(self):
         """Clear form and create fresh one"""
@@ -66,5 +75,18 @@ class BasicFormApp(App):
         self.app.log(self.tree)
 
 
-if __name__ == "__main__":
+class BasicFormApp(App):
+
+    def on_mount(self):
+        self.app.push_screen(BasicFormScreen(), callback=self.exit_app)
+
+    def exit_app(self, result=None) -> None:
+        """Called when BasicFormScreen is dismissed."""
+        self.exit(result)
+
+
+def main():
     BasicFormApp().run()
+
+if __name__ == "__main__":
+    main()

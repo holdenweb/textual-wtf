@@ -69,7 +69,7 @@ class ResultsDisplayScreen(Screen):
 
     @on(Button.Pressed, "#exit")
     def exit_pressed(self, event: Button.Pressed):
-            self.app.exit()
+            self.dismiss(False)
 
     def show_data(self):
 

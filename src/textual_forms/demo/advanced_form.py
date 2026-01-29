@@ -1,12 +1,13 @@
 """Advanced form example with results display"""
 from textual.app import App, ComposeResult
 from textual.containers import Container
+from textual.screen import Screen
 from textual.widgets import Static
 from textual_forms import (
     Form, StringField, IntegerField, BooleanField, ChoiceField, TextField
 )
 from textual_forms.validators import EmailValidator, EvenInteger
-from results_screen import ResultsDisplayScreen
+from textual_forms.demo.results_screen import ResultsDisplayScreen
 
 class ContactForm(Form):
     """Contact form with multiple field types"""
@@ -56,7 +57,7 @@ class ResultsScreen(ResultsDisplayScreen):
             yield from self.buttons()
 
 
-class AdvancedFormApp(App):
+class AdvancedFormScreen(Screen):
     """Demo app for advanced form features"""
 
     CSS = """
@@ -90,19 +91,26 @@ class AdvancedFormApp(App):
         """Handle form submission"""
         data = event.form.get_data()
 
-        def check_reset(should_reset):
-            if should_reset:
+        def check_reset(cont):
+            if cont:
                 self.reset_form()
+            else:
+                self.dismiss(cont)
 
-        self.push_screen(ResultsScreen("Form Submitted Successfully!", data), check_reset)
+        self.app.push_screen(
+            ResultsScreen("Form Submitted Successfully!", data), check_reset
+        )
 
     def on_form_cancelled(self, event: Form.Cancelled):
         """Handle form cancellation"""
-        def check_reset(should_reset):
-            if should_reset:
-                self.reset_form()
 
-        self.push_screen(ResultsScreen("Form Cancelled", None), check_reset)
+        def check_reset(cont):
+            if cont:
+                self.reset_form()
+            else:
+                self.dismiss(cont)
+
+        self.app.push_screen(ResultsScreen("Form Cancelled", None), check_reset)
 
     def reset_form(self):
         """Clear form and create fresh one"""
@@ -112,6 +120,20 @@ class AdvancedFormApp(App):
         self.form = ContactForm(title="Contact Information")
         self.mount(self.form.render())
 
+class AdvancedFormApp(App):
+
+    def on_mount(self):
+        self.app.push_screen(AdvancedFormScreen(), callback=self.exit_app)
+
+    def exit_app(self, result=None) -> None:
+        """Called when BasicFormScreen is dismissed."""
+        self.exit(result)
+
+
+
+def main():
+    AdvancedFormApp().run()
+
 
 if __name__ == "__main__":
-    AdvancedFormApp().run()
+    main()

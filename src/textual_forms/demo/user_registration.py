@@ -1,10 +1,11 @@
 """User registration form example with results display"""
 from textual.app import App, ComposeResult
 from textual.containers import Container, VerticalScroll
-from textual.widgets import Header, Static
+from textual.screen import Screen
+from textual.widgets import Static
 from textual_forms import Form, StringField, BooleanField
 from textual_forms.validators import EmailValidator
-from results_screen import ResultsDisplayScreen
+from textual_forms.demo.results_screen import ResultsDisplayScreen
 
 class RegistrationForm(Form):
     """User registration form"""
@@ -38,7 +39,7 @@ class ResultsScreen(ResultsDisplayScreen):
             yield from self.buttons()
 
 
-class RegistrationApp(App):
+class RegistrationScreen(Screen):
     """User registration application"""
 
     TITLE = "User Registration"
@@ -66,7 +67,6 @@ class RegistrationApp(App):
     """
 
     def compose(self) -> ComposeResult:
-        #yield Header()
         with Container():
             with VerticalScroll():
                 yield Static(
@@ -87,28 +87,48 @@ class RegistrationApp(App):
             )
             return
 
-        def check_reset(should_reset):
-            if should_reset:
+        def check_reset(cont):
+            if cont:
                 self.reset_form()
+            else:
+                self.dismiss(cont)
 
-        self.push_screen(ResultsScreen("Registration Successful!", data), check_reset)
+        self.app.push_screen(
+            ResultsScreen("Registration Successful!", data), check_reset
+        )
 
     def on_form_cancelled(self, event: Form.Cancelled):
         """Handle registration cancellation"""
-        def check_reset(should_reset):
-            if should_reset:
-                self.reset_form()
 
-        self.push_screen(ResultsScreen("Registration Cancelled", None), check_reset)
+        def check_reset(cont):
+            if cont:
+                self.reset_form()
+            else:
+                self.dismiss(cont)
+
+        self.app.push_screen(ResultsScreen("Registration Cancelled", None), check_reset)
 
     def reset_form(self):
         """Clear form and create fresh one"""
         old_form = self.query_one("RenderedForm")
         old_form.remove()
-
         self.form = RegistrationForm(title="Create Account")
-        self.query_one("Vertical").mount(self.form.render())
+        self.query_one("VerticalScroll").mount(self.form.render())
 
+
+class RegistrationApp(App):
+
+    def on_mount(self):
+        self.app.push_screen(RegistrationScreen(), callback=self.exit_app)
+
+    def exit_app(self, result=None) -> None:
+        """Called when Screen is dismissed."""
+        self.exit(result)
+
+
+def main():
+    RegistrationApp().run()
 
 if __name__ == "__main__":
-    RegistrationApp().run()
+    main()
+
