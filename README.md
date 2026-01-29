@@ -26,7 +26,7 @@ Some of the remaining tests are of dubious value, and they will ultimately be re
 
 If you have `uv` installed you can run the examples from the repository using the command
 
-`uvx --from git+https://github.com/holdenweb/textual-forms.git demo`
+`uvx textual-forms
 
 You will see a menu of demonstration examples, each of which is also a standalone program in the src/textual_forms/demo directory.
 as shown below.
