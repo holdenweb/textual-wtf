@@ -51,19 +51,19 @@ class ResultsScreen(ResultsDisplayScreen):
 
             yield from self.show_data()
 
-            # Demonstrate SQL-style field lookup
+            # Demonstrate attribute-style field access
             if self.form:
                 lookup_lines = [
-                    "SQL-Style Field Lookup Examples:",
-                    "  get_field('billing_street'): "
-                    + self.form.get_field('billing_street').label,
-                    f"        [{self.form.get_field('billing_street').value}]",
-                    "  get_field('email'): "
-                    + self.form.get_field('email').label
+                    "Field Attribute Access Examples:",
+                    "  form.billing_street: "
+                    + self.form.billing_street.label,
+                    f"        [{self.form.billing_street.value}]",
+                    "  form.email: "
+                    + self.form.email.label
                     + " (unqualified)",
-                    f"        [{self.form.get_field('email').value}]",
+                    f"        [{self.form.email.value}]",
                     "",
-                    "Note: In this case get_field('street') would raise AmbiguousFieldError",
+                    "Note: In this case form.street would raise AmbiguousFieldError",
                     "      because both billing_street and shipping_street exist",
                 ]
                 yield Static("\n".join(lookup_lines), id="field-lookup")

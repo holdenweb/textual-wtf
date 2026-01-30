@@ -51,32 +51,33 @@ class TestFormWithoutAppContext:
         assert names == ["name", "age", "active"]
 
     def test_get_field(self):
-        """Test get_field utility method"""
+        """Test field attribute access"""
         form = SimpleForm()
 
-        name_field = form.get_field("name")
+        name_field = form.name
         assert name_field is not None
         assert name_field.label == "Name"
         assert name_field.required is True
 
-        nonexistent = form.get_field("nonexistent")
-        assert nonexistent is None
+        # Test that accessing non-existent field raises AttributeError
+        with pytest.raises(AttributeError):
+            _ = form.nonexistent
 
     def test_field_configuration(self):
         """Test field configuration without rendering"""
         form = SimpleForm()
 
-        age_field = form.get_field("age")
+        age_field = form.age
         assert age_field.min_value == 0
         assert age_field.max_value == 130
 
-        active_field = form.get_field("active")
+        active_field = form.active
         assert active_field.to_python(True) is True
 
     def test_choice_field_configuration(self):
         """Test choice field without rendering"""
         form = ChoiceForm()
-        country_field = form.get_field("country")
+        country_field = form.country
 
         assert country_field.choices == [
             ("us", "United States"),
@@ -121,7 +122,7 @@ class TestFormWithAppContext:
             assert "name" in app.form.fields
 
             # Fields should have widgets
-            name_field = app.form.get_field("name")
+            name_field = app.form.name
             assert name_field.widget is not None
 
     async def test_form_data_in_app(self):
@@ -162,7 +163,7 @@ class TestFormUtilityMethods:
         assert len(names) == 3
 
         # Get specific field
-        name_field = form.get_field("name")
+        name_field = form.name
         assert name_field.label == "Name"
 
         # Get all fields
@@ -200,7 +201,7 @@ class TestDocumentedPatterns:
 
         # Pattern 1: Get field information
         for field_name in form.get_field_names():
-            field = form.get_field(field_name)
+            field = getattr(form, field_name)
             assert field.label is not None
 
         assert len(form.get_field_names()) == 3
@@ -210,11 +211,11 @@ class TestDocumentedPatterns:
         form = SimpleForm()
 
         # Pattern 2: Test field logic directly
-        name_field = form.get_field("name")
+        name_field = form.name
         assert name_field.to_python("  Test  ") == "Test"
         assert name_field.to_python("") is None
 
-        age_field = form.get_field("age")
+        age_field = form.age
         assert age_field.to_python("42") == 42
         assert age_field.to_python("") is None
 
@@ -223,7 +224,7 @@ class TestDocumentedPatterns:
         form = ChoiceForm()
 
         # Pattern 3: Validate form is configured correctly
-        country = form.get_field("country")
+        country = form.country
         assert len(country.choices) == 3
         assert country.required is True
 

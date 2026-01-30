@@ -400,6 +400,39 @@ class BaseForm:
                 f"Use the full qualified name to disambiguate."
             )
 
+    def __getattr__(self, name: str) -> Field:
+        """
+        Enable attribute-style field access: form.fieldname
+        
+        This allows accessing fields as attributes instead of using get_field().
+        Falls back to get_field() which handles SQL-style name resolution.
+        
+        Args:
+            name: Field name
+            
+        Returns:
+            Field instance
+            
+        Raises:
+            AttributeError: If field doesn't exist
+            AmbiguousFieldError: If unqualified name matches multiple fields
+            
+        Example:
+            form.email          # Instead of form.get_field('email')
+            form.billing_street # Instead of form.get_field('billing_street')
+        """
+        # Avoid infinite recursion for special attributes
+        if name.startswith('_'):
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        
+        # Try to get the field
+        field = self.get_field(name)
+        if field is not None:
+            return field
+        
+        # Field not found - raise AttributeError
+        raise AttributeError(f"Form has no field '{name}'")
+
     def render(self, id=None) -> RenderedForm:
         """
         Render the form as a Textual widget

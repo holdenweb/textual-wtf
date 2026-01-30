@@ -176,7 +176,7 @@ class TestSQLStyleLookup:
             billing = AddressForm.compose(prefix='billing')
 
         form = OrderForm()
-        field = form.get_field('billing_street')
+        field = form.billing_street
 
         assert field is not None
         assert field.name == 'billing_street'
@@ -190,7 +190,7 @@ class TestSQLStyleLookup:
         form = SimpleForm()
 
         # 'email' is unique - should work without prefix
-        field = form.get_field('email')
+        field = form.email
         assert field is not None
         assert field.name == 'email'
 
@@ -204,7 +204,7 @@ class TestSQLStyleLookup:
 
         # 'street' is ambiguous
         with pytest.raises(AmbiguousFieldError, match="ambiguous"):
-            form.get_field('street')
+            _ = form.street
 
     def test_qualified_match_disambiguates(self):
         """Test qualified name disambiguates"""
@@ -215,8 +215,8 @@ class TestSQLStyleLookup:
         form = ShippingForm()
 
         # Qualified names should work
-        billing_street = form.get_field('billing_street')
-        shipping_street = form.get_field('shipping_street')
+        billing_street = form.billing_street
+        shipping_street = form.shipping_street
 
         assert billing_street.name == 'billing_street'
         assert shipping_street.name == 'shipping_street'
@@ -227,9 +227,10 @@ class TestSQLStyleLookup:
             billing = AddressForm.compose(prefix='billing')
 
         form = SimpleForm()
-        field = form.get_field('nonexistent')
-
-        assert field is None
+        
+        # Accessing non-existent field should raise AttributeError
+        with pytest.raises(AttributeError):
+            _ = form.nonexistent
 
 
 class TestNestedComposition:
