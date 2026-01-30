@@ -1,5 +1,5 @@
 [project]
-name = "textual-forms"
+name = "textual-wtf"
 version = "0.8.0b5"
 description = "A declarative forms library for Textual TUI applications"
 readme = "README.md"
@@ -35,15 +35,15 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-textual-forms = "textual_forms.demo.launcher:main"
+textual-wtf = "textual_wtf.demo.launcher:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-v --cov=textual_forms --cov-report=term-missing --cov-report=html"
+addopts = "-v --cov=textual_wtf --cov-report=term-missing --cov-report=html"
 
 [tool.coverage.run]
-source = ["src/textual_forms"]
+source = ["src/textual_wtf"]
 omit = ["*/tests/*", "*/examples/*"]
 
 [tool.coverage.report]

@@ -2,7 +2,7 @@
 Textual Forms - A declarative forms library for Textual TUI applications
 
 Example:
-    from textual_forms import Form, StringField, IntegerField
+    from textual_wtf import Form, StringField, IntegerField
 
     class UserForm(Form):
         name = StringField(label="Name", required=True)

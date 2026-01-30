@@ -3,8 +3,8 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Center
 from textual.screen import Screen
 from textual.widgets import Static, Button
-from textual_forms import Form, StringField, IntegerField, BooleanField
-from textual_forms.demo.results_screen import ResultsDisplayScreen  # Demo library utility
+from textual_wtf import Form, StringField, IntegerField, BooleanField
+from textual_wtf.demo.results_screen import ResultsDisplayScreen  # Demo library utility
 
 class UserForm(Form):
     """Simple user registration form"""

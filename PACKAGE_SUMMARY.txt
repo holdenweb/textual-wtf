@@ -11,7 +11,7 @@ LICENSE: MIT
 PACKAGE CONTENTS
 ================================================================================
 
-CORE MODULES (src/textual_forms/):
+CORE MODULES (src/textual_wtf/):
   ✓ __init__.py        - Public API and exports
   ✓ fields.py          - Field implementations (StringField, IntegerField, etc.)
   ✓ widgets.py         - Widget implementations (FormInput, FormTextArea, etc.)
@@ -27,7 +27,7 @@ TEST SUITE (tests/):
   ✓ test_validators.py  - Validator tests
   ✓ test_exceptions.py  - Exception tests
   ✓ conftest.py         - Pytest configuration
-  
+
   Total: 90+ test cases covering all major functionality
 
 EXAMPLES (examples/):
@@ -116,7 +116,7 @@ USAGE EXAMPLES
     class UserForm(Form):
         name = StringField(label="Name", required=True)
         age = IntegerField(label="Age", min_value=0)
-    
+
     app.mount(UserForm().render())
 
 2. CUSTOM WIDGET:
@@ -137,7 +137,7 @@ USAGE EXAMPLES
     class MyApp(App):
         def compose(self):
             yield UserForm().render()
-        
+
         def on_form_submitted(self, event):
             data = event.form.get_data()
             self.notify(f"Saved: {data}")
@@ -170,11 +170,11 @@ INSTALLATION
 ================================================================================
 
 Development Mode:
-  cd textual-forms
+  cd textual-wtf
   uv pip install -e ".[dev]"
 
 From PyPI (when published):
-  uv pip install textual-forms
+  uv pip install textual-wtf
 
 Run Examples:
   python examples/basic_form.py

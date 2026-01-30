@@ -6,7 +6,7 @@ Create a file `my_form.py`:
 
 ```python
 from textual.app import App
-from textual_forms import Form, StringField, IntegerField
+from textual_wtf import Form, StringField, IntegerField
 
 # 1. Define your form
 class UserForm(Form):
@@ -50,7 +50,7 @@ yield UserForm(data=initial_data).render()
 ### Add Validation
 
 ```python
-from textual_forms.validators import EmailValidator
+from textual_wtf.validators import EmailValidator
 
 class ContactForm(Form):
     email = StringField(
@@ -69,7 +69,7 @@ class ArticleForm(Form):
 ### Dropdown Selection
 
 ```python
-from textual_forms import ChoiceField
+from textual_wtf import ChoiceField
 
 class PreferencesForm(Form):
     country = ChoiceField(
@@ -85,7 +85,7 @@ class PreferencesForm(Form):
 ### Checkboxes
 
 ```python
-from textual_forms import BooleanField
+from textual_wtf import BooleanField
 
 class SignupForm(Form):
     agree_terms = BooleanField(label="I agree to terms")

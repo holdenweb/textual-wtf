@@ -14,14 +14,14 @@ Test field logic, validators, and form structure without creating widgets:
 def test_field_configuration():
     """Test without app context"""
     form = UserForm()
-    
+
     # Inspect structure
     assert "email" in form.get_field_names()
-    
+
     # Check configuration
     field = form.get_field("email")
     assert field.required is True
-    
+
     # Test field logic
     assert field.to_python("  test@example.com  ") == "test@example.com"
 ```
@@ -34,11 +34,11 @@ Test rendering and widget behavior using `run_test()`:
 @pytest.mark.asyncio
 async def test_form_rendering():
     """Test with app context using run_test()"""
-    
+
     class TestApp(App):
         def compose(self):
             yield UserForm().render()
-    
+
     app = TestApp()
     async with app.run_test() as pilot:
         # Now you have full app context
@@ -53,16 +53,16 @@ async def test_form_rendering():
 ```python
 import pytest
 from textual.app import App
-from textual_forms.widgets import FormInput
+from textual_wtf.widgets import FormInput
 
 @pytest.mark.asyncio
 async def test_widget_creation():
     """Test widget with app context"""
-    
+
     class TestApp(App):
         def compose(self):
             yield FormInput()
-    
+
     app = TestApp()
     async with app.run_test() as pilot:
         # Widget created successfully
@@ -75,16 +75,16 @@ async def test_widget_creation():
 @pytest.mark.asyncio
 async def test_form_with_data():
     """Test form with initial data"""
-    
+
     class TestApp(App):
         def __init__(self):
             super().__init__()
             self.form = None
-        
+
         def compose(self):
             self.form = UserForm(data={"name": "John", "age": 30})
             yield self.form.render()
-    
+
     app = TestApp()
     async with app.run_test() as pilot:
         # Check form data
@@ -99,16 +99,16 @@ async def test_form_with_data():
 @pytest.mark.asyncio
 async def test_user_input():
     """Test simulating user input"""
-    
+
     class TestApp(App):
         def __init__(self):
             super().__init__()
             self.form = None
-        
+
         def compose(self):
             self.form = UserForm()
             yield self.form.render()
-    
+
     app = TestApp()
     async with app.run_test() as pilot:
         # Simulate user typing into input
@@ -143,7 +143,7 @@ pytest
 # Run only async tests
 pytest -k "asyncio"
 
-# Run only non-async tests  
+# Run only non-async tests
 pytest -k "not asyncio"
 
 # Verbose output
@@ -187,7 +187,7 @@ async def test_widgets():
     class TestApp(App):
         def compose(self):
             yield UserForm().render()
-    
+
     async with TestApp().run_test():
         pass  # Widgets created successfully
 ```
@@ -201,10 +201,10 @@ async def test_data():
         def __init__(self):
             super().__init__()
             self.form = UserForm(data={"name": "Test"})
-        
+
         def compose(self):
             yield self.form.render()
-    
+
     app = TestApp()
     async with app.run_test():
         assert app.form.get_data()["name"] == "Test"
@@ -234,7 +234,7 @@ async def test():
     class TestApp(App):
         def compose(self):
             yield FormInput()
-    
+
     async with TestApp().run_test():
         pass
 ```

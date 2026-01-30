@@ -3,9 +3,9 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Static
-from textual_forms import Form, StringField, BooleanField
-from textual_forms.validators import EmailValidator
-from textual_forms.demo.results_screen import ResultsDisplayScreen
+from textual_wtf import Form, StringField, BooleanField
+from textual_wtf.validators import EmailValidator
+from textual_wtf.demo.results_screen import ResultsDisplayScreen
 
 class RegistrationForm(Form):
     """User registration form"""

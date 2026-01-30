@@ -1,11 +1,11 @@
 """Test validators"""
 import pytest
-from textual_forms.validators import (
+from textual_wtf.validators import (
     EvenInteger,
     Palindromic,
     EmailValidator,
 )
-from textual_forms.exceptions import ValidationError
+from textual_wtf.exceptions import ValidationError
 
 
 class TestEvenInteger:

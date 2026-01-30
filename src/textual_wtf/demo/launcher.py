@@ -9,11 +9,11 @@ from textual.screen import Screen
 from textual.widgets import Label, Header, Footer
 from textual.message import Message
 
-from textual_forms.demo.basic_form import BasicFormScreen as BasicScreen
-from textual_forms.demo.advanced_form import AdvancedFormScreen as AdvancedScreen
-from textual_forms.demo.user_registration import RegistrationScreen
-from textual_forms.demo.nested_once_form import ShopScreen as NestedOnceScreen
-from textual_forms.demo.nested_twice_form import ShopScreen as NestedTwiceScreen
+from textual_wtf.demo.basic_form import BasicFormScreen as BasicScreen
+from textual_wtf.demo.advanced_form import AdvancedFormScreen as AdvancedScreen
+from textual_wtf.demo.user_registration import RegistrationScreen
+from textual_wtf.demo.nested_once_form import ShopScreen as NestedOnceScreen
+from textual_wtf.demo.nested_twice_form import ShopScreen as NestedTwiceScreen
 
 class MenuLink(Label):
     """A clickable text link widget."""

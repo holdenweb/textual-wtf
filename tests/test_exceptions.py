@@ -1,6 +1,6 @@
 """Test exceptions"""
 import pytest
-from textual_forms.exceptions import ValidationError, FieldError, FormError
+from textual_wtf.exceptions import ValidationError, FieldError, FormError
 
 
 def test_validation_error():

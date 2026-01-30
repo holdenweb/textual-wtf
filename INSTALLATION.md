@@ -14,7 +14,7 @@
 uv pip install -e ".[dev]"
 
 # Or install from PyPI (when published)
-uv pip install textual-forms
+uv pip install textual-wtf
 ```
 
 ### Option 2: Using pip
@@ -24,7 +24,7 @@ uv pip install textual-forms
 pip install -e ".[dev]"
 
 # Or from PyPI (when published)
-pip install textual-forms
+pip install textual-wtf
 ```
 
 ## Quick Start
@@ -63,7 +63,7 @@ pytest tests/test_fields.py::TestStringField::test_creation -v
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd textual-forms
+cd textual-wtf
 
 # Create virtual environment
 uv venv
@@ -85,11 +85,11 @@ open htmlcov/index.html
 ## Package Structure
 
 ```
-textual-forms/
-├── src/textual_forms/     # Main package
+textual-wtf/
+├── src/textual_wtf/     # Main package
 │   ├── __init__.py        # Public API
 │   ├── exceptions.py      # Custom exceptions
-│   ├── validators.py      # Validation classes  
+│   ├── validators.py      # Validation classes
 │   ├── fields.py          # Field implementations
 │   ├── widgets.py         # Widget implementations
 │   └── forms.py           # Form metaclass and base
@@ -110,7 +110,7 @@ textual-forms/
 uv pip install textual
 ```
 
-### Import Error: No module named 'textual_forms'
+### Import Error: No module named 'textual_wtf'
 
 Make sure you've installed the package:
 ```bash

@@ -1,9 +1,9 @@
-"""Exceptions for textual-forms"""
+"""Exceptions for textual-wtf"""
 
 
 class ValidationError(Exception):
     """Raised when field validation fails"""
-    
+
     def __init__(self, message: str, code: str = None):
         self.message = message
         self.code = code

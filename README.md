@@ -26,9 +26,11 @@ Some of the remaining tests are of dubious value, and they will ultimately be re
 
 If you have `uv` installed you can run the examples from the repository using the command
 
-`uvx textual-forms
+`uvx --from git+https://github.com/holdenweb/textual-wtf.git textual-wtf`
 
-You will see a menu of demonstration examples, each of which is also a standalone program in the src/textual_forms/demo directory.
+**NOTE: Please do not mistake this for the PyPI package of the same name.**
+
+You will see a menu of demonstration examples, each of which is also a standalone program in the src/textual_wtf/demo directory.
 as shown below.
 
 |  Menu item                   | Program name           | Description                                  |
@@ -51,13 +53,13 @@ The package will be released to PyPI at version 0.8, at the time of writing in a
 Until then, install from this repository as follows.
 
 ```bash
-python -m pip install textual_forms@git+https://github.com/holdenweb/textual-forms.git
+python -m pip install textual_wtf@git+https://github.com/holdenweb/textual-wtf.git
 ```
 
 `uv` users can use
 
 ```bash
-uv add textual_forms@git+https://github.com/holdenweb/textual-forms.git
+uv add textual_wtf@git+https://github.com/holdenweb/textual-wtf.git
 ```
 
 ## Quick Start
@@ -67,7 +69,7 @@ The most basic forms contain one or more fields. When a form is submitted a
 values using field names. Here's a simple example.
 
 ```python
-from textual_forms import Form, StringField, IntegerField, BooleanField
+from textual_wtf import Form, StringField, IntegerField, BooleanField
 
 class UserForm(Form):
     """Simple user registration form"""
@@ -134,7 +136,7 @@ dotted access? Should alternatives be offered?
 
 Documentation of the foundational classes (Forms, Fields and Widgets) is the
 biggest current technical debt. The `examples` directory
-contains some code that we hope will help you to evalute textual-forms
+contains some code that we hope will help you to evalute textual-wtf
 and shape its direction with your feedback.
 
 Additional example programs, particularly those demonstrating the
