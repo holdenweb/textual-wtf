@@ -190,11 +190,10 @@ class TestSQLStyleLookup:
         form = SimpleForm()
 
         # 'email' is unique - should work without prefix
-        # This resolves via standard attribute access (it's declared as 'email')
         field = form.email
         assert field is not None
         assert field.name == 'email'
-        
+
         # Test unqualified access for prefixed field
         # 'billing_street' exists. 'street' does not.
         # form.street should resolve to form.billing_street via fuzzy lookup
@@ -235,8 +234,10 @@ class TestSQLStyleLookup:
             billing = AddressForm.compose(prefix='billing')
 
         form = SimpleForm()
+
+        # Accessing non-existent field should raise AttributeError
         with pytest.raises(AttributeError):
-             _ = form.nonexistent
+            _ = form.nonexistent
 
 
 class TestNestedComposition:

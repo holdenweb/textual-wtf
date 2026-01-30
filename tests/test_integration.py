@@ -51,7 +51,7 @@ class TestFormWithoutAppContext:
         names = form.get_field_names()
         assert names == ["name", "age", "active"]
 
-    def test_attribute_access(self):
+    def test_field_attribute_access(self):
         """Test direct attribute access instead of get_field"""
         form = SimpleForm()
 
@@ -60,7 +60,7 @@ class TestFormWithoutAppContext:
         assert name_field.label == "Name"
         assert name_field.required is True
 
-        # Test attribute error for non-existent field
+        # Test that accessing non-existent field raises AttributeError
         with pytest.raises(AttributeError):
             _ = form.nonexistent
 
@@ -163,7 +163,7 @@ class TestFormUtilityMethods:
         names = form.get_field_names()
         assert len(names) == 3
 
-        # Get specific field via attribute
+        # Get specific field
         name_field = form.name
         assert name_field.label == "Name"
 
@@ -211,8 +211,8 @@ class TestDocumentedPatterns:
         """Test field conversion logic without rendering"""
         form = SimpleForm()
 
-        # Pattern 2: Test field logic directly via attributes
-        name_field = form.name
+        # Pattern 2: Test field logic directly
+q        name_field = form.name
         assert name_field.to_python("  Test  ") == "Test"
         assert name_field.to_python("") is None
 
