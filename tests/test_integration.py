@@ -31,9 +31,10 @@ class TestFormWithoutAppContext:
         """Test form can be created without app"""
         form = SimpleForm()
         assert form is not None
-        assert "name" in form.fields
-        assert "age" in form.fields
-        assert "active" in form.fields
+        # Attribute access
+        assert form.name is not None
+        assert form.age is not None
+        assert form.active is not None
 
     def test_get_fields_dict(self):
         """Test get_fields_dict utility method"""
@@ -50,33 +51,34 @@ class TestFormWithoutAppContext:
         names = form.get_field_names()
         assert names == ["name", "age", "active"]
 
-    def test_get_field(self):
-        """Test get_field utility method"""
+    def test_attribute_access(self):
+        """Test direct attribute access instead of get_field"""
         form = SimpleForm()
 
-        name_field = form.get_field("name")
+        name_field = form.name
         assert name_field is not None
         assert name_field.label == "Name"
         assert name_field.required is True
 
-        nonexistent = form.get_field("nonexistent")
-        assert nonexistent is None
+        # Test attribute error for non-existent field
+        with pytest.raises(AttributeError):
+            _ = form.nonexistent
 
     def test_field_configuration(self):
         """Test field configuration without rendering"""
         form = SimpleForm()
 
-        age_field = form.get_field("age")
+        age_field = form.age
         assert age_field.min_value == 0
         assert age_field.max_value == 130
 
-        active_field = form.get_field("active")
+        active_field = form.active
         assert active_field.to_python(True) is True
 
     def test_choice_field_configuration(self):
         """Test choice field without rendering"""
         form = ChoiceForm()
-        country_field = form.get_field("country")
+        country_field = form.country
 
         assert country_field.choices == [
             ("us", "United States"),
@@ -118,10 +120,10 @@ class TestFormWithAppContext:
         async with app.run_test() as pilot:
             # Widgets should be created
             assert app.form is not None
-            assert "name" in app.form.fields
+            assert app.form.name is not None
 
             # Fields should have widgets
-            name_field = app.form.get_field("name")
+            name_field = app.form.name
             assert name_field.widget is not None
 
     async def test_form_data_in_app(self):
@@ -161,8 +163,8 @@ class TestFormUtilityMethods:
         names = form.get_field_names()
         assert len(names) == 3
 
-        # Get specific field
-        name_field = form.get_field("name")
+        # Get specific field via attribute
+        name_field = form.name
         assert name_field.label == "Name"
 
         # Get all fields
@@ -200,7 +202,7 @@ class TestDocumentedPatterns:
 
         # Pattern 1: Get field information
         for field_name in form.get_field_names():
-            field = form.get_field(field_name)
+            field = getattr(form, field_name)
             assert field.label is not None
 
         assert len(form.get_field_names()) == 3
@@ -209,12 +211,12 @@ class TestDocumentedPatterns:
         """Test field conversion logic without rendering"""
         form = SimpleForm()
 
-        # Pattern 2: Test field logic directly
-        name_field = form.get_field("name")
+        # Pattern 2: Test field logic directly via attributes
+        name_field = form.name
         assert name_field.to_python("  Test  ") == "Test"
         assert name_field.to_python("") is None
 
-        age_field = form.get_field("age")
+        age_field = form.age
         assert age_field.to_python("42") == 42
         assert age_field.to_python("") is None
 
@@ -223,7 +225,7 @@ class TestDocumentedPatterns:
         form = ChoiceForm()
 
         # Pattern 3: Validate form is configured correctly
-        country = form.get_field("country")
+        country = form.country
         assert len(country.choices) == 3
         assert country.required is True
 

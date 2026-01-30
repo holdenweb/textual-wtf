@@ -49,15 +49,15 @@ class ResultsScreen(ResultsDisplayScreen):
 
             if self.form:
                 lookup_lines = [
-                    "SQL-Style Field Lookup Examples:",
-                    f"  get_field('street'): {self.form.get_field('street').label}:",
-                    f"        [{self.form.get_field('street').value}]",
-                    f"  get_field('billing_street'): {self.form.get_field('billing_street').label}:",
-                    f"        [{self.form.get_field('billing_street').value}]",
-                    f"  get_field('email'): {self.form.get_field('email').label}",
-                    f"        [{self.form.get_field('email').value}]" "",
-                    "Even though a composed form has a prefix, its fields can be looked",
-                    "up without the prefix so long as they are unique.",
+                    "Field Attribute Access Examples:",
+                    f"  form.street: {self.form.street.label}:",
+                    f"        [{self.form.street.value}]",
+                    f"  form.billing_street: {self.form.billing_street.label}:",
+                    f"        [{self.form.billing_street.value}]",
+                    f"  form.email: {self.form.email.label}",
+                    f"        [{self.form.email.value}]" "",
+                    "Even though a composed form has a prefix, its fields can be accessed",
+                    "without the prefix so long as they are unique.",
                 ]
                 yield Static("\n".join(lookup_lines), id="field-lookup")
 

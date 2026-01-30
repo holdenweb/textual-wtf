@@ -11,7 +11,16 @@ if TYPE_CHECKING:
 
 
 class Field(ABC):
-    """Base field class - defines interface for all field types"""
+    """
+    Base field class - defines interface for all field types.
+    
+    This class holds ONLY configuration (immutable, class-level).
+    Runtime state (widget instance, errors, current value) is held
+    in BoundField instances created when a Form is instantiated.
+    
+    This separation allows Field instances to be safely shared across
+    multiple Form instances (thread-safe, no deep copying needed).
+    """
 
     default_widget: Optional[Type[Widget]] = None
 
@@ -20,7 +29,20 @@ class Field(ABC):
                  required: bool = False, initial: Any = None,
                  label: Optional[str] = None, help_text: Optional[str] = None,
                  disabled: bool = False, **widget_kwargs):
-        """Initialize field"""
+        """
+        Initialize field configuration
+        
+        Args:
+            widget: Widget class to use (overrides default_widget)
+            validators: List of validators
+            required: Whether field is required
+            initial: Initial/default value
+            label: Field label for display
+            help_text: Help text for field
+            disabled: Whether field is disabled
+            **widget_kwargs: Additional kwargs passed to widget
+        """
+        # Configuration only (immutable)
         self.widget_class = widget or self.default_widget
         self.validators = validators or []
         self.required = required
@@ -29,14 +51,9 @@ class Field(ABC):
         self.help_text = help_text
         self.disabled = disabled
         self.widget_kwargs = widget_kwargs
-
-        # Set by Form metaclass
-        self.name: Optional[str] = None
-        self.form: Optional['Form'] = None
-
-        # Runtime state
-        self._widget_instance: Optional[Widget] = None
-        self._errors: List[str] = []
+        
+        # NOTE: Runtime state (_widget_instance, _errors, name, form)
+        # is now held in BoundField instances, not here!
 
     @abstractmethod
     def to_python(self, value: Any) -> Any:
@@ -47,9 +64,35 @@ class Field(ABC):
     def to_widget(self, value: Any) -> Any:
         """Convert Python value to widget value"""
         pass
+    
+    def bind(self, form: 'Form', name: str, initial: Any = None) -> 'BoundField':
+        """
+        Create a BoundField from this Field configuration
+        
+        This is called by Form.__init__() to create runtime state
+        for this field in a specific form instance.
+        
+        Args:
+            form: Parent form instance
+            name: Field name in the form
+            initial: Initial value (overrides self.initial if provided)
+            
+        Returns:
+            BoundField instance holding runtime state
+        """
+        from .bound_fields import BoundField
+        return BoundField(self, form, name, initial)
 
     def create_widget(self) -> Widget:
-        """Factory method to create configured widget"""
+        """
+        Factory method to create configured widget
+        
+        Note: This creates the widget but doesn't store it.
+        The BoundField is responsible for storing widget instances.
+        
+        Returns:
+            Configured widget instance
+        """
         if not self.widget_class:
             raise FieldError(
                 f"{self.__class__.__name__} must define default_widget "
@@ -65,48 +108,41 @@ class Field(ABC):
                 kwargs.setdefault('validators', self.validators)
 
         widget = self.widget_class(**kwargs)
-        widget.field = self
         return widget
 
     def validate(self, value: Any) -> None:
-        """Validate Python value - override to add custom validation"""
-        self._errors = []
+        """
+        Validate Python value (stateless)
+        
+        This method is now stateless - it doesn't modify _errors.
+        Instead, it raises ValidationError which BoundField catches
+        and stores in its own _errors list.
+        
+        Args:
+            value: Python value to validate
+            
+        Raises:
+            ValidationError: If validation fails
+        """
         if self.required and value is None:
-            raise ValidationError(f"{self.label or self.name} is required")
+            raise ValidationError(f"{self.label or 'Field'} is required")
 
     def clean(self, value: Any) -> Any:
-        """Convert and validate value"""
+        """
+        Convert and validate value (stateless)
+        
+        Args:
+            value: Raw value to clean
+            
+        Returns:
+            Cleaned Python value
+            
+        Raises:
+            ValidationError: If validation fails
+        """
         python_value = self.to_python(value)
         self.validate(python_value)
         return python_value
-
-    @property
-    def value(self) -> Any:
-        """Get current field value"""
-        if self._widget_instance is None:
-            return self.initial
-        return self.to_python(self._widget_instance.value)
-
-    @value.setter
-    def value(self, value: Any) -> None:
-        """Set field value"""
-        if self._widget_instance is not None:
-            self._widget_instance.value = self.to_widget(value)
-
-    @property
-    def widget(self) -> Optional[Widget]:
-        """Get widget instance"""
-        return self._widget_instance
-
-    @widget.setter
-    def widget(self, widget: Widget) -> None:
-        """Set widget instance"""
-        self._widget_instance = widget
-
-    @property
-    def errors(self) -> List[str]:
-        """Get validation errors"""
-        return self._errors
 
 
 class StringField(Field):

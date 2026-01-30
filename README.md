@@ -28,8 +28,6 @@ If you have `uv` installed you can run the examples from the repository using th
 
 `uvx --from git+https://github.com/holdenweb/textual-wtf.git textual-wtf`
 
-**NOTE: Please do not mistake this for the PyPI package of the same name.**
-
 You will see a menu of demonstration examples, each of which is also a standalone program in the src/textual_wtf/demo directory.
 as shown below.
 

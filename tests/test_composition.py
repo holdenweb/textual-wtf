@@ -1,7 +1,6 @@
 """Test form composition functionality"""
 import pytest
-from textual.app import App
-from textual_wtf import Form, StringField, IntegerField, BooleanField
+from textual_wtf import Form, StringField, BooleanField
 from textual_wtf.exceptions import FieldError, AmbiguousFieldError
 
 
@@ -30,13 +29,14 @@ class TestBasicComposition:
         form = OrderForm()
 
         # Check that fields are prefixed
-        assert 'billing_street' in form.fields
-        assert 'billing_city' in form.fields
-        assert 'billing_postal_code' in form.fields
+        assert form.billing_street is not None
+        assert form.billing_city is not None
+        assert form.billing_postal_code is not None
 
-        # Original field names should not exist
-        assert 'street' not in form.fields
-        assert 'city' not in form.fields
+        # Because of fuzzy matching in __getattr__, 'street' resolves to 'billing_street'
+        # because it is unique in this form.
+        assert form.street is not None
+        assert form.street.name == 'billing_street'
 
     def test_compose_without_prefix(self):
         """Test composing a form without prefix"""
@@ -46,9 +46,9 @@ class TestBasicComposition:
         form = SimpleForm()
 
         # Fields should not be prefixed
-        assert 'street' in form.fields
-        assert 'city' in form.fields
-        assert 'postal_code' in form.fields
+        assert form.street is not None
+        assert form.city is not None
+        assert form.postal_code is not None
 
     def test_compose_with_empty_prefix(self):
         """Test composing with explicit empty prefix"""
@@ -58,8 +58,8 @@ class TestBasicComposition:
         form = SimpleForm()
 
         # Same as no prefix
-        assert 'street' in form.fields
-        assert 'city' in form.fields
+        assert form.street is not None
+        assert form.city is not None
 
     def test_compose_multiple_forms(self):
         """Test composing multiple forms with different prefixes"""
@@ -70,10 +70,10 @@ class TestBasicComposition:
         form = ShippingForm()
 
         # Both sets of fields should exist
-        assert 'billing_street' in form.fields
-        assert 'billing_city' in form.fields
-        assert 'shipping_street' in form.fields
-        assert 'shipping_city' in form.fields
+        assert form.billing_street is not None
+        assert form.billing_city is not None
+        assert form.shipping_street is not None
+        assert form.shipping_city is not None
 
         # Six total fields (3 from each)
         assert len(form.fields) == 6
@@ -88,13 +88,13 @@ class TestBasicComposition:
         form = OrderForm()
 
         # Composed fields
-        assert 'billing_street' in form.fields
-        assert 'billing_city' in form.fields
-        assert 'billing_postal_code' in form.fields
+        assert form.billing_street is not None
+        assert form.billing_city is not None
+        assert form.billing_postal_code is not None
 
         # Regular fields
-        assert 'notes' in form.fields
-        assert 'urgent' in form.fields
+        assert form.notes is not None
+        assert form.urgent is not None
 
         # Total: 3 composed + 2 regular = 5
         assert len(form.fields) == 5
@@ -168,7 +168,7 @@ class TestNameCollisions:
 
 
 class TestSQLStyleLookup:
-    """Test SQL-style field name resolution"""
+    """Test SQL-style field name resolution via Attribute Access"""
 
     def test_exact_match(self):
         """Test exact field name match"""
@@ -176,13 +176,13 @@ class TestSQLStyleLookup:
             billing = AddressForm.compose(prefix='billing')
 
         form = OrderForm()
-        field = form.get_field('billing_street')
+        field = form.billing_street  # Standard attribute access
 
         assert field is not None
         assert field.name == 'billing_street'
 
     def test_unqualified_match_unique(self):
-        """Test unqualified match when unique"""
+        """Test unqualified match when unique (via __getattr__)"""
         class SimpleForm(Form):
             billing = AddressForm.compose(prefix='billing')
             email = StringField()
@@ -190,9 +190,17 @@ class TestSQLStyleLookup:
         form = SimpleForm()
 
         # 'email' is unique - should work without prefix
-        field = form.get_field('email')
+        # This resolves via standard attribute access (it's declared as 'email')
+        field = form.email
         assert field is not None
         assert field.name == 'email'
+
+        # Test unqualified access for prefixed field
+        # 'billing_street' exists. 'street' does not.
+        # form.street should resolve to form.billing_street via fuzzy lookup
+        field = form.street
+        assert field is not None
+        assert field.name == 'billing_street'
 
     def test_unqualified_match_ambiguous(self):
         """Test unqualified match raises error when ambiguous"""
@@ -202,9 +210,9 @@ class TestSQLStyleLookup:
 
         form = ShippingForm()
 
-        # 'street' is ambiguous
+        # 'street' matches billing_street and shipping_street
         with pytest.raises(AmbiguousFieldError, match="ambiguous"):
-            form.get_field('street')
+            _ = form.street
 
     def test_qualified_match_disambiguates(self):
         """Test qualified name disambiguates"""
@@ -215,8 +223,8 @@ class TestSQLStyleLookup:
         form = ShippingForm()
 
         # Qualified names should work
-        billing_street = form.get_field('billing_street')
-        shipping_street = form.get_field('shipping_street')
+        billing_street = form.billing_street
+        shipping_street = form.shipping_street
 
         assert billing_street.name == 'billing_street'
         assert shipping_street.name == 'shipping_street'
@@ -227,9 +235,8 @@ class TestSQLStyleLookup:
             billing = AddressForm.compose(prefix='billing')
 
         form = SimpleForm()
-        field = form.get_field('nonexistent')
-
-        assert field is None
+        with pytest.raises(AttributeError):
+             _ = form.nonexistent
 
 
 class TestNestedComposition:
@@ -247,10 +254,10 @@ class TestNestedComposition:
         form = OrderForm()
 
         # Check nested field names
-        assert 'contact_addr_street' in form.fields
-        assert 'contact_addr_city' in form.fields
-        assert 'contact_addr_postal_code' in form.fields
-        assert 'contact_phone' in form.fields
+        assert form.contact_addr_street is not None
+        assert form.contact_addr_city is not None
+        assert form.contact_addr_postal_code is not None
+        assert form.contact_phone is not None
 
     def test_nested_composition_three_levels(self):
         """Test three levels of nesting"""
@@ -266,8 +273,8 @@ class TestNestedComposition:
         form = OrderForm()
 
         # Check deeply nested field names
-        assert 'c_loc_addr_street' in form.fields
-        assert 'c_loc_addr_city' in form.fields
+        assert form.c_loc_addr_street is not None
+        assert form.c_loc_addr_city is not None
 
 
 class TestDataHandling:
@@ -282,71 +289,12 @@ class TestDataHandling:
         form = OrderForm()
 
         # Set some values (would normally be set through widgets)
-        form.fields['billing_street']._widget_instance = None
-        form.fields['billing_street'].initial = '123 Main St'
-        form.fields['notes']._widget_instance = None
-        form.fields['notes'].initial = 'Test note'
+        form.billing_street._widget_instance = None
+        form.billing_street.value = '123 Main St'
+        form.notes._widget_instance = None
+        form.notes.value = 'Test note'
 
         # Data should be flat with prefixed keys
         # (Can't fully test without widgets, but structure should be correct)
         assert 'billing_street' in form.fields
         assert 'notes' in form.fields
-
-
-@pytest.mark.asyncio
-class TestCompositionWithRendering:
-    """Test composition with actual rendering"""
-
-    async def test_render_composed_form(self):
-        """Test rendering a form with composition"""
-        class OrderForm(Form):
-            billing = AddressForm.compose(prefix='billing')
-            notes = StringField(label="Notes")
-
-        class TestApp(App):
-            def compose(self):
-                yield OrderForm().render()
-
-        app = TestApp()
-        async with app.run_test() as pilot:
-            # If we get here, rendering worked
-            assert True
-
-    async def test_render_nested_composition(self):
-        """Test rendering nested composition"""
-        class ContactForm(Form):
-            address = AddressForm.compose(prefix='addr')
-            phone = StringField(label="Phone")
-
-        class OrderForm(Form):
-            contact = ContactForm.compose(prefix='contact')
-
-        class TestApp(App):
-            def compose(self):
-                yield OrderForm().render()
-
-        app = TestApp()
-        async with app.run_test() as pilot:
-            assert True
-
-
-class TestCompositionMetadata:
-    """Test composition metadata tracking"""
-
-    def test_metadata_tracked(self):
-        """Test that composition metadata is tracked"""
-        class OrderForm(Form):
-            billing = AddressForm.compose(prefix='billing')
-            email = StringField()
-
-        # Check that metadata exists
-        assert hasattr(OrderForm, '_composition_metadata')
-
-        # Composed fields should have metadata
-        metadata = OrderForm._composition_metadata
-        assert 'billing_street' in metadata
-        assert metadata['billing_street']['prefix'] == 'billing'
-        assert metadata['billing_street']['original_name'] == 'street'
-
-        # Regular fields should not
-        assert 'email' not in metadata

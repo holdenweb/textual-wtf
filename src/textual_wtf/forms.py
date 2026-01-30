@@ -7,7 +7,7 @@ from textual.widgets import Button, Static, Label
 from textual.message import Message
 
 from .fields import Field
-from .exceptions import FieldError
+from .exceptions import FieldError, AmbiguousFieldError
 
 
 class ComposedForm:
@@ -154,17 +154,10 @@ class RenderedForm(VerticalScroll):
     }
     """
 
-
     def __init__(self, form, data: Optional[Dict[str, Any]] = None,
                  field_order: Optional[List[str]] = None, id=None):
         """
         Initialize rendered form
-
-        Args:
-            form: The Form instance
-            data: Initial data dict
-            field_order: Custom field ordering
-            id: Widget ID
         """
         super().__init__(id=id, **form.kwargs)
         self.form = form
@@ -252,7 +245,11 @@ class BaseForm:
                  title: Optional[str] = None, render_type=RenderedForm, **kwargs):
         """
         Initialize form
-
+        
+        Creates BoundField instances from class-level Field definitions.
+        This is much faster than deep copying and enables thread-safe
+        Form class reuse.
+        
         Args:
             data: Initial data dict
             field_order: Custom field ordering
@@ -267,41 +264,47 @@ class BaseForm:
         self.kwargs = kwargs
         self.render_type = render_type
 
-        # Deep copy fields from _base_fields
-        self.fields: Dict[str, Field] = copy.deepcopy(self._base_fields)
+        # Create BoundFields from class-level Field definitions
+        # NO MORE DEEP COPY - just create lightweight BoundField wrappers
+        self.bound_fields: Dict[str, 'BoundField'] = {}
+        
+        for name, field in self._base_fields.items():
+            # Get initial value from data if provided
+            initial = data.get(name) if data else None
+            # Create BoundField (holds runtime state)
+            bound_field = field.bind(self, name, initial)
+            self.bound_fields[name] = bound_field
+            
+            # Set as attribute for direct access (form.fieldname)
+            setattr(self, name, bound_field)
 
         # Apply custom field ordering if provided
         self.order_fields(self.field_order)
+    
+    @property
+    def fields(self) -> Dict[str, 'BoundField']:
+        """
+        Backward compatibility: alias for bound_fields
+        
+        Returns bound_fields so existing code using form.fields continues to work.
+        """
+        return self.bound_fields
 
-        # Bind fields to this form
-        for name, field in self.fields.items():
-            field.name = name
-            field.form = self
+    def __getattr__(self, name: str) -> 'BoundField':
+        """
+        Allow dot-access to fields using the "SQL-style" resolution logic.
+        This is called only if the attribute was not found by normal lookup.
+        """
+        # Try to resolve using get_field logic
+        field = self.get_field(name)
+        if field:
+            return field
+        
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     @classmethod
     def compose(cls, prefix: str = '', title: Optional[str] = None) -> ComposedForm:
-        """
-        Create a composition marker for including this form in another
-
-        Args:
-            prefix: Optional prefix for field names (e.g., 'billing' creates 'billing_street')
-                   Empty string or no prefix means fields are added without prefixing
-            title: Optional title for the subform section. If not provided and prefix exists,
-                   the prefix will be capitalized and used as the title
-
-        Returns:
-            ComposedForm marker for use in form class definition
-
-        Example:
-            class AddressForm(Form):
-                street = StringField()
-                city = StringField()
-
-            class OrderForm(Form):
-                billing = AddressForm.compose(prefix='billing')   # Creates billing_street, billing_city with "Billing" title
-                shipping = AddressForm.compose(prefix='shipping', title='Ship To') # Custom title
-                notes = StringField()
-        """
+        """Create a composition marker for including this form in another"""
         return ComposedForm(cls, prefix=prefix, title=title)
 
     def get_data(self) -> Dict[str, Any]:
@@ -322,62 +325,30 @@ class BaseForm:
         if field_order is None:
             return
 
-        fields = {}
+        # Work directly with bound_fields since fields is now a property
+        ordered = {}
         # First add fields in specified order
         for key in field_order:
-            if key in self.fields:
-                fields[key] = self.fields.pop(key)
+            if key in self.bound_fields:
+                ordered[key] = self.bound_fields.pop(key)
 
         # Then add any remaining fields
-        for k in list(self.fields):
-            fields[k] = self.fields.pop(k)
+        for k in list(self.bound_fields):
+            ordered[k] = self.bound_fields.pop(k)
 
-        self.fields = fields
+        self.bound_fields = ordered
 
-
-    def get_fields_dict(self) -> Dict[str, Field]:
-        """
-        Get fields dictionary without rendering
-
-        Useful for:
-        - Testing field configuration
-        - Inspecting form structure
-        - Validating field setup
-
-        Returns:
-            Dictionary of field name -> Field instance
-        """
-        return self.fields
+    def get_fields_dict(self) -> Dict[str, 'BoundField']:
+        """Get fields dictionary without rendering"""
+        return self.bound_fields
 
     def get_field_names(self) -> List[str]:
-        """
-        Get list of field names in order
+        """Get list of field names in order"""
+        return list(self.bound_fields.keys())
 
-        Returns:
-            List of field names
-        """
-        return list(self.fields.keys())
-
-    def get_field(self, name: str) -> Optional[Field]:
+    def get_field(self, name: str) -> Optional['BoundField']:
         """
         Get a specific field by name with SQL-style resolution
-
-        Supports:
-        - Exact match: get_field('billing_street')
-        - Unqualified match: get_field('street') if unambiguous
-        - Raises AmbiguousFieldError if multiple fields match
-
-        Args:
-            name: Field name (qualified or unqualified)
-
-        Returns:
-            Field instance or None if not found
-
-        Raises:
-            AmbiguousFieldError: If unqualified name matches multiple fields
-
-        XXX: Creating an iterator for the candidates would allow us
-             to detect the first and then easily error on a subsequent match.
         """
         # Try exact match first
         if name in self.fields:
@@ -401,19 +372,10 @@ class BaseForm:
             )
 
     def render(self, id=None) -> RenderedForm:
-        """
-        Render the form as a Textual widget
-
-        Args:
-            id: Optional ID for the rendered form
-
-        Returns:
-            RenderedForm widget ready to be mounted
-        """
+        """Render the form as a Textual widget"""
         # Create widgets for all fields
         for name, field in self.fields.items():
             field.widget = field.create_widget()
-            field._widget_instance = field.widget
 
         # Create and return rendered form
         self.rform = self.render_type(
@@ -425,12 +387,7 @@ class BaseForm:
         return self.rform
 
     async def validate(self):
-        """
-        Validate all form fields
-
-        Returns:
-            True if all fields are valid, False otherwise
-        """
+        """Validate all form fields"""
         result = True
 
         for name, field in self.fields.items():
@@ -454,23 +411,16 @@ class BaseForm:
 class Form(BaseForm, metaclass=FormMetaclass):
     """
     Form with declarative field syntax
-
-    Example:
-        class UserForm(Form):
-            name = StringField(label="Name", required=True)
-            age = IntegerField(label="Age", min_value=0)
     """
 
     class Submitted(Message):
         """Posted when form is submitted successfully"""
-
         def __init__(self, r_form: RenderedForm):
             super().__init__()
             self.form = r_form
 
     class Cancelled(Message):
         """Posted when form is cancelled"""
-
         def __init__(self, r_form: RenderedForm):
             super().__init__()
             self.form = r_form
