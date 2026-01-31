@@ -31,9 +31,10 @@ class TestFormWithoutAppContext:
         """Test form can be created without app"""
         form = SimpleForm()
         assert form is not None
-        assert "name" in form.fields
-        assert "age" in form.fields
-        assert "active" in form.fields
+        # Attribute access
+        assert form.name is not None
+        assert form.age is not None
+        assert form.active is not None
 
     def test_get_fields_dict(self):
         """Test get_fields_dict utility method"""
@@ -50,8 +51,8 @@ class TestFormWithoutAppContext:
         names = form.get_field_names()
         assert names == ["name", "age", "active"]
 
-    def test_get_field(self):
-        """Test field attribute access"""
+    def test_attribute_access(self):
+        """Test direct attribute access instead of get_field"""
         form = SimpleForm()
 
         name_field = form.name
@@ -59,7 +60,7 @@ class TestFormWithoutAppContext:
         assert name_field.label == "Name"
         assert name_field.required is True
 
-        # Test that accessing non-existent field raises AttributeError
+        # Test attribute error for non-existent field
         with pytest.raises(AttributeError):
             _ = form.nonexistent
 
@@ -119,7 +120,7 @@ class TestFormWithAppContext:
         async with app.run_test() as pilot:
             # Widgets should be created
             assert app.form is not None
-            assert "name" in app.form.fields
+            assert app.form.name is not None
 
             # Fields should have widgets
             name_field = app.form.name
@@ -162,7 +163,7 @@ class TestFormUtilityMethods:
         names = form.get_field_names()
         assert len(names) == 3
 
-        # Get specific field
+        # Get specific field via attribute
         name_field = form.name
         assert name_field.label == "Name"
 
@@ -210,7 +211,7 @@ class TestDocumentedPatterns:
         """Test field conversion logic without rendering"""
         form = SimpleForm()
 
-        # Pattern 2: Test field logic directly
+        # Pattern 2: Test field logic directly via attributes
         name_field = form.name
         assert name_field.to_python("  Test  ") == "Test"
         assert name_field.to_python("") is None

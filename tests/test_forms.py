@@ -30,8 +30,10 @@ class TestForm:
             age = IntegerField(label="Age")
 
         form = UserForm()
-        assert "name" in form.fields
-        assert "age" in form.fields
+        # Test attribute access
+        assert form.name is not None
+        assert form.age is not None
+        assert form.name.label == "Name"
 
     def test_field_binding(self):
         """Test that fields are bound to form"""
@@ -39,7 +41,8 @@ class TestForm:
             name = StringField()
 
         form = UserForm()
-        field = form.fields["name"]
+        # Test attribute access
+        field = form.name
         assert field.name == "name"
         assert field.form is form
 
@@ -62,6 +65,9 @@ class TestForm:
         form = UserForm(data={"name": "Jane", "age": 25})
         assert form.data["name"] == "Jane"
         assert form.data["age"] == 25
+        # Verify values propagated to fields
+        assert form.name.value == "Jane"
+        assert form.age.value == 25
 
     def test_field_ordering(self):
         """Test custom field ordering"""

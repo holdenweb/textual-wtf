@@ -7,7 +7,7 @@ from textual.widgets import Button, Static, Label
 from textual.message import Message
 
 from .fields import Field
-from .exceptions import FieldError
+from .exceptions import FieldError, AmbiguousFieldError
 
 
 class ComposedForm:
@@ -154,17 +154,10 @@ class RenderedForm(VerticalScroll):
     }
     """
 
-
     def __init__(self, form, data: Optional[Dict[str, Any]] = None,
                  field_order: Optional[List[str]] = None, id=None):
         """
         Initialize rendered form
-
-        Args:
-            form: The Form instance
-            data: Initial data dict
-            field_order: Custom field ordering
-            id: Widget ID
         """
         super().__init__(id=id, **form.kwargs)
         self.form = form
@@ -252,13 +245,6 @@ class BaseForm:
                  title: Optional[str] = None, render_type=RenderedForm, **kwargs):
         """
         Initialize form
-
-        Args:
-            data: Initial data dict
-            field_order: Custom field ordering
-            title: Form title
-            render_type: Custom renderer class
-            **kwargs: Additional kwargs for renderer
         """
         self.data = data
         self.children = children
@@ -273,35 +259,28 @@ class BaseForm:
         # Apply custom field ordering if provided
         self.order_fields(self.field_order)
 
-        # Bind fields to this form
+        # Bind fields to this form and set as attributes
         for name, field in self.fields.items():
             field.name = name
             field.form = self
+            # ALLOW DIRECT ATTRIBUTE ACCESS
+            setattr(self, name, field)
+
+    def __getattr__(self, name: str) -> Field:
+        """
+        Allow dot-access to fields using the "SQL-style" resolution logic.
+        This is called only if the attribute was not found by normal lookup.
+        """
+        # Try to resolve using get_field logic
+        field = self.get_field(name)
+        if field:
+            return field
+        
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     @classmethod
     def compose(cls, prefix: str = '', title: Optional[str] = None) -> ComposedForm:
-        """
-        Create a composition marker for including this form in another
-
-        Args:
-            prefix: Optional prefix for field names (e.g., 'billing' creates 'billing_street')
-                   Empty string or no prefix means fields are added without prefixing
-            title: Optional title for the subform section. If not provided and prefix exists,
-                   the prefix will be capitalized and used as the title
-
-        Returns:
-            ComposedForm marker for use in form class definition
-
-        Example:
-            class AddressForm(Form):
-                street = StringField()
-                city = StringField()
-
-            class OrderForm(Form):
-                billing = AddressForm.compose(prefix='billing')   # Creates billing_street, billing_city with "Billing" title
-                shipping = AddressForm.compose(prefix='shipping', title='Ship To') # Custom title
-                notes = StringField()
-        """
+        """Create a composition marker for including this form in another"""
         return ComposedForm(cls, prefix=prefix, title=title)
 
     def get_data(self) -> Dict[str, Any]:
@@ -334,50 +313,17 @@ class BaseForm:
 
         self.fields = fields
 
-
     def get_fields_dict(self) -> Dict[str, Field]:
-        """
-        Get fields dictionary without rendering
-
-        Useful for:
-        - Testing field configuration
-        - Inspecting form structure
-        - Validating field setup
-
-        Returns:
-            Dictionary of field name -> Field instance
-        """
+        """Get fields dictionary without rendering"""
         return self.fields
 
     def get_field_names(self) -> List[str]:
-        """
-        Get list of field names in order
-
-        Returns:
-            List of field names
-        """
+        """Get list of field names in order"""
         return list(self.fields.keys())
 
     def get_field(self, name: str) -> Optional[Field]:
         """
         Get a specific field by name with SQL-style resolution
-
-        Supports:
-        - Exact match: get_field('billing_street')
-        - Unqualified match: get_field('street') if unambiguous
-        - Raises AmbiguousFieldError if multiple fields match
-
-        Args:
-            name: Field name (qualified or unqualified)
-
-        Returns:
-            Field instance or None if not found
-
-        Raises:
-            AmbiguousFieldError: If unqualified name matches multiple fields
-
-        XXX: Creating an iterator for the candidates would allow us
-             to detect the first and then easily error on a subsequent match.
         """
         # Try exact match first
         if name in self.fields:
@@ -400,49 +346,8 @@ class BaseForm:
                 f"Use the full qualified name to disambiguate."
             )
 
-    def __getattr__(self, name: str) -> Field:
-        """
-        Enable attribute-style field access: form.fieldname
-        
-        This allows accessing fields as attributes instead of using get_field().
-        Falls back to get_field() which handles SQL-style name resolution.
-        
-        Args:
-            name: Field name
-            
-        Returns:
-            Field instance
-            
-        Raises:
-            AttributeError: If field doesn't exist
-            AmbiguousFieldError: If unqualified name matches multiple fields
-            
-        Example:
-            form.email          # Instead of form.get_field('email')
-            form.billing_street # Instead of form.get_field('billing_street')
-        """
-        # Avoid infinite recursion for special attributes
-        if name.startswith('_'):
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
-        
-        # Try to get the field
-        field = self.get_field(name)
-        if field is not None:
-            return field
-        
-        # Field not found - raise AttributeError
-        raise AttributeError(f"Form has no field '{name}'")
-
     def render(self, id=None) -> RenderedForm:
-        """
-        Render the form as a Textual widget
-
-        Args:
-            id: Optional ID for the rendered form
-
-        Returns:
-            RenderedForm widget ready to be mounted
-        """
+        """Render the form as a Textual widget"""
         # Create widgets for all fields
         for name, field in self.fields.items():
             field.widget = field.create_widget()
@@ -458,12 +363,7 @@ class BaseForm:
         return self.rform
 
     async def validate(self):
-        """
-        Validate all form fields
-
-        Returns:
-            True if all fields are valid, False otherwise
-        """
+        """Validate all form fields"""
         result = True
 
         for name, field in self.fields.items():
@@ -487,23 +387,16 @@ class BaseForm:
 class Form(BaseForm, metaclass=FormMetaclass):
     """
     Form with declarative field syntax
-
-    Example:
-        class UserForm(Form):
-            name = StringField(label="Name", required=True)
-            age = IntegerField(label="Age", min_value=0)
     """
 
     class Submitted(Message):
         """Posted when form is submitted successfully"""
-
         def __init__(self, r_form: RenderedForm):
             super().__init__()
             self.form = r_form
 
     class Cancelled(Message):
         """Posted when form is cancelled"""
-
         def __init__(self, r_form: RenderedForm):
             super().__init__()
             self.form = r_form

@@ -92,6 +92,10 @@ class Field(ABC):
         """Set field value"""
         if self._widget_instance is not None:
             self._widget_instance.value = self.to_widget(value)
+        else:
+            # If widget doesn't exist yet, update initial so getter works
+            # This allows set_data() to work on unrendered forms
+            self.initial = value
 
     @property
     def widget(self) -> Optional[Widget]:
