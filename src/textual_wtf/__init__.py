@@ -11,6 +11,7 @@ Example:
 from .version import __version__
 
 from .exceptions import ValidationError, FieldError, FormError, AmbiguousFieldError
+from .bound_fields import BoundField
 from .fields import (
     Field,
     StringField,
@@ -42,6 +43,7 @@ __all__ = [
     "AmbiguousFieldError",
     # Fields
     "Field",
+    "BoundField",
     "StringField",
     "IntegerField",
     "BooleanField",

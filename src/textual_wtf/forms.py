@@ -245,6 +245,17 @@ class BaseForm:
                  title: Optional[str] = None, render_type=RenderedForm, **kwargs):
         """
         Initialize form
+        
+        Creates BoundField instances from class-level Field definitions.
+        This is much faster than deep copying and enables thread-safe
+        Form class reuse.
+        
+        Args:
+            data: Initial data dict
+            field_order: Custom field ordering
+            title: Form title
+            render_type: Custom renderer class
+            **kwargs: Additional kwargs for renderer
         """
         self.data = data
         self.children = children
@@ -253,20 +264,33 @@ class BaseForm:
         self.kwargs = kwargs
         self.render_type = render_type
 
-        # Deep copy fields from _base_fields
-        self.fields: Dict[str, Field] = copy.deepcopy(self._base_fields)
+        # Create BoundFields from class-level Field definitions
+        # NO MORE DEEP COPY - just create lightweight BoundField wrappers
+        self.bound_fields: Dict[str, 'BoundField'] = {}
+        
+        for name, field in self._base_fields.items():
+            # Get initial value from data if provided
+            initial = data.get(name) if data else None
+            # Create BoundField (holds runtime state)
+            bound_field = field.bind(self, name, initial)
+            self.bound_fields[name] = bound_field
+            
+            # Set as attribute for direct access (form.fieldname)
+            setattr(self, name, bound_field)
 
         # Apply custom field ordering if provided
         self.order_fields(self.field_order)
+    
+    @property
+    def fields(self) -> Dict[str, 'BoundField']:
+        """
+        Backward compatibility: alias for bound_fields
+        
+        Returns bound_fields so existing code using form.fields continues to work.
+        """
+        return self.bound_fields
 
-        # Bind fields to this form and set as attributes
-        for name, field in self.fields.items():
-            field.name = name
-            field.form = self
-            # ALLOW DIRECT ATTRIBUTE ACCESS
-            setattr(self, name, field)
-
-    def __getattr__(self, name: str) -> Field:
+    def __getattr__(self, name: str) -> 'BoundField':
         """
         Allow dot-access to fields using the "SQL-style" resolution logic.
         This is called only if the attribute was not found by normal lookup.
@@ -301,27 +325,28 @@ class BaseForm:
         if field_order is None:
             return
 
-        fields = {}
+        # Work directly with bound_fields since fields is now a property
+        ordered = {}
         # First add fields in specified order
         for key in field_order:
-            if key in self.fields:
-                fields[key] = self.fields.pop(key)
+            if key in self.bound_fields:
+                ordered[key] = self.bound_fields.pop(key)
 
         # Then add any remaining fields
-        for k in list(self.fields):
-            fields[k] = self.fields.pop(k)
+        for k in list(self.bound_fields):
+            ordered[k] = self.bound_fields.pop(k)
 
-        self.fields = fields
+        self.bound_fields = ordered
 
-    def get_fields_dict(self) -> Dict[str, Field]:
+    def get_fields_dict(self) -> Dict[str, 'BoundField']:
         """Get fields dictionary without rendering"""
-        return self.fields
+        return self.bound_fields
 
     def get_field_names(self) -> List[str]:
         """Get list of field names in order"""
-        return list(self.fields.keys())
+        return list(self.bound_fields.keys())
 
-    def get_field(self, name: str) -> Optional[Field]:
+    def get_field(self, name: str) -> Optional['BoundField']:
         """
         Get a specific field by name with SQL-style resolution
         """
@@ -346,45 +371,11 @@ class BaseForm:
                 f"Use the full qualified name to disambiguate."
             )
 
-    def __getattr__(self, name: str) -> Field:
-        """
-        Enable attribute-style field access: form.fieldname
-        
-        This allows accessing fields as attributes instead of using get_field().
-        Falls back to get_field() which handles SQL-style name resolution.
-        
-        Args:
-            name: Field name
-            
-        Returns:
-            Field instance
-            
-        Raises:
-            AttributeError: If field doesn't exist
-            AmbiguousFieldError: If unqualified name matches multiple fields
-            
-        Example:
-            form.email          # Instead of form.get_field('email')
-            form.billing_street # Instead of form.get_field('billing_street')
-        """
-        # Avoid infinite recursion for special attributes
-        if name.startswith('_'):
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
-        
-        # Try to get the field
-        field = self.get_field(name)
-        if field is not None:
-            return field
-        
-        # Field not found - raise AttributeError
-        raise AttributeError(f"Form has no field '{name}'")
-
     def render(self, id=None) -> RenderedForm:
         """Render the form as a Textual widget"""
         # Create widgets for all fields
         for name, field in self.fields.items():
             field.widget = field.create_widget()
-            field._widget_instance = field.widget
 
         # Create and return rendered form
         self.rform = self.render_type(

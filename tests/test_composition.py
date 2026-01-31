@@ -190,6 +190,7 @@ class TestSQLStyleLookup:
         form = SimpleForm()
 
         # 'email' is unique - should work without prefix
+        # This resolves via standard attribute access (it's declared as 'email')
         field = form.email
         assert field is not None
         assert field.name == 'email'
@@ -234,10 +235,8 @@ class TestSQLStyleLookup:
             billing = AddressForm.compose(prefix='billing')
 
         form = SimpleForm()
-
-        # Accessing non-existent field should raise AttributeError
         with pytest.raises(AttributeError):
-            _ = form.nonexistent
+             _ = form.nonexistent
 
 
 class TestNestedComposition:
@@ -291,9 +290,9 @@ class TestDataHandling:
 
         # Set some values (would normally be set through widgets)
         form.billing_street._widget_instance = None
-        form.billing_street.initial = '123 Main St'
+        form.billing_street.value = '123 Main St'
         form.notes._widget_instance = None
-        form.notes.initial = 'Test note'
+        form.notes.value = 'Test note'
 
         # Data should be flat with prefixed keys
         # (Can't fully test without widgets, but structure should be correct)
