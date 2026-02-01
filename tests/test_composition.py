@@ -292,7 +292,7 @@ class TestDataHandling:
         form.billing_street._widget_instance = None
         form.billing_street.value = '123 Main St'
         form.notes._widget_instance = None
-        form.notes.vlue = 'Test note'
+        form.notes.value = 'Test note'
 
         # Data should be flat with prefixed keys
         # (Can't fully test without widgets, but structure should be correct)

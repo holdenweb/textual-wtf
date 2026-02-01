@@ -13,14 +13,21 @@ A declarative, extensible forms library for [Textual](https://textual.textualize
 
 ## Warnings
 
-This package is in a late alpha stage.
-No details should be regarded as final, particularly naming details.
-Nevertheless we believe it is sufficiently close to its
-final form to be put to practical use,
-the feedback from which will inform further development.
+This package is in a beta stage. No details should be regarded as final,
+particularly naming details, but existing functionality won't be broken
+without a good reason. Nevertheless we believe it is sufficiently close to
+its final form to be rigorously exercised.
 
-LLMs have been used in the development of this package, which has since been subjected to serious scrutiny by a seasoned professional programmer.
-Some of the remaining tests are of dubious value, and they will ultimately be removed.
+Form layout is at present embedded in the Form.render method, which returns a
+RenderedForm widget making it difficult to provide flexibility in
+representation. This mechanism has extremely low "textuality," and will be
+replaced in release 0.9.
+
+LLMs have been used in the development of this package, which is
+subjected to serious scrutiny by a seasoned professional programmer, but this
+is no guarantee of quality or correctness. _caveat usor_.
+
+Some of the current tests are of dubious value, and may ultimately be removed.
 
 ## Running the Examples
 
@@ -41,13 +48,15 @@ as shown below.
 
 In a clone of the repository the command `uv run examples/<name>` should suffice.
 
-`poetry` users should find that they can build a distribution (wheel and
-sdist) of the project with `poetry build` and install that wherever required.
-No further testing in other development environments has so far been reported.
+`poetry` users should find that they can create a virtual environment and run
+`poetry run textual-wtf` to start the demo. You can also build a distribution
+(wheel and sdist) of the project with `poetry build` and install that
+wherever required. No further testing in other development environments has
+so far been reported.
 
 ## Installation
 
-The package will be released to PyPI at version 0.8, at the time of writing in alpha.
+The package will shortly be released to PyPI at version 0.8.
 Until then, install from this repository as follows.
 
 ```bash
