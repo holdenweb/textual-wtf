@@ -7,7 +7,7 @@ from textual.widgets import Button, Static, Label
 from textual.message import Message
 
 from .fields import Field
-from .exceptions import FieldError, AmbiguousFieldError
+from .exceptions import FieldError, AmbiguousFieldError, ValidationError
 
 
 class ComposedForm:
@@ -397,13 +397,20 @@ class BaseForm:
             # Clear previous errors
             await container.remove_children(".form-error")
 
-            # Validate widget
+            # Widget-level validation (validators passed to widget)
             vr = widget.validate(widget.value)
             if vr is not None and not vr.is_valid:
                 result = False
                 # Display errors
                 for msg in vr.failure_descriptions:
                     container.mount(Center(Static(msg, classes="form-error")))
+
+            # Field-level validation (required, custom Field validators)
+            try:
+                field.clean(field.value)
+            except ValidationError as e:
+                result = False
+                container.mount(Center(Static(str(e), classes="form-error")))
 
         return result
 
