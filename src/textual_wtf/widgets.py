@@ -4,8 +4,6 @@ from textual.widgets import Input, Checkbox, Select, TextArea, Static
 from textual.containers import Center
 from textual.validation import ValidationResult, Validator
 
-import wingdbstub
-
 if TYPE_CHECKING:
     from .fields import Field
 
