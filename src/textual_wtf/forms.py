@@ -1,11 +1,9 @@
 """Form metaclass and base classes"""
 import copy
 from typing import Dict, Any, Optional, List
-from textual import on
-from textual.containers import Vertical, Center, Horizontal, VerticalScroll
-from textual.widgets import Button, Static, Label
 from textual.message import Message
-
+from textual.containers import Center
+from textual.widgets import Static
 from .fields import Field
 from .exceptions import FieldError, AmbiguousFieldError, ValidationError
 
@@ -100,192 +98,71 @@ class FormMetaclass(type):
         return new_class
 
 
-class RenderedForm(VerticalScroll):
-    """Rendered form widget that displays fields and buttons"""
-
-    DEFAULT_CSS = """
-    RenderedForm {
-        keyline: thin green;
-    }
-
-    Vertical {
-        margin: 1;
-    }
-
-    #form-title {
-        background: blue;
-        height: auto;
-        margin: 1;
-    }
-
-    .subform-title {
-        background: white;
-        color: black;
-        height: auto;
-        padding: 0 1;
-        margin: 1 0 0 0;
-    }
-
-    .form-field {
-        height: auto;
-    }
-
-    .form-error {
-        color: red;
-        width: 1fr;
-    }
-
-    #buttons {
-        height: auto;
-        align: center middle;
-        margin: 0;
-    }
-
-    #outer-buttons {
-        height: auto;
-    }
-
-    Input {
-        height: auto;
-    }
-
-    TextArea {
-        height: 6;
-    }
-    """
-
-    def __init__(self, form, data: Optional[Dict[str, Any]] = None,
-                 field_order: Optional[List[str]] = None, id=None):
-        """
-        Initialize rendered form
-        """
-        super().__init__(id=id, **form.kwargs)
-        self.form = form
-        self.fields = form.fields
-        self.data = data
-        self.field_order = field_order
-
-        if data is not None:
-            self.set_data(data)
-
-    def compose(self):
-        """Compose the form UI"""
-        # Optional title
-        if self.form.title is not None:
-            yield Vertical(
-                Center(Static(f"---- {self.form.title} ----")),
-                id="form-title"
-            )
-
-        # Track which subforms we've already rendered headers for
-        rendered_subforms = set()
-
-        # Render each field
-        for name, field in self.form.fields.items():
-            # Check if this field is part of a composed subform with a title
-            metadata = self.form._composition_metadata.get(name)
-            if metadata and metadata.get('title'):
-                subform_id = metadata['composed_from']
-
-                # Render subform title once per subform
-                if subform_id not in rendered_subforms:
-                    yield Static(metadata['title'], classes="subform-title")
-                    rendered_subforms.add(subform_id)
-
-            with Vertical(classes="form-field"):
-                if field.label:
-                    yield Label(field.label)
-                yield field.widget
-
-                # Set initial data if provided
-                if self.data and name in self.data:
-                    field.value = self.data[name]
-
-        # Submit/Cancel buttons
-        yield Vertical(
-            Horizontal(
-                Button("Cancel", id="cancel"),
-                Button("Submit", id="submit", variant="primary"),
-                id="buttons"
-            ),
-            id="outer-buttons"
-        )
-
-    def get_data(self) -> Dict[str, Any]:
-        """Get current form data"""
-        return self.form.get_data()
-
-    def set_data(self, data: Dict[str, Any]):
-        """Set form data"""
-        return self.form.set_data(data)
-
-    async def validate(self):
-        """Validate all form fields"""
-        return await self.form.validate()
-
-    @on(Button.Pressed, "#submit")
-    async def submit_pressed(self, event: Button.Pressed) -> None:
-        """Handle submit button press"""
-        if await self.validate():
-            self.post_message(Form.Submitted(self))
-        else:
-            self.app.notify("Please fix the errors before submitting", severity="error")
-
-    @on(Button.Pressed, "#cancel")
-    async def cancel_pressed(self, event: Button.Pressed) -> None:
-        """Handle cancel button press"""
-        self.post_message(Form.Cancelled(self))
 
 
 class BaseForm:
     """Base form class without metaclass"""
 
+    # Default layout class to use when rendering
+    layout_class = None  # Will be set to DefaultFormLayout after import
+
     def __init__(self, *children, data: Optional[Dict[str, Any]] = None,
                  field_order: Optional[List[str]] = None,
-                 title: Optional[str] = None, render_type=RenderedForm, **kwargs):
+                 title: Optional[str] = None,
+                 layout_class=None,
+                 **kwargs):
         """
         Initialize form
-        
+
         Creates BoundField instances from class-level Field definitions.
         This is much faster than deep copying and enables thread-safe
         Form class reuse.
-        
+
         Args:
             data: Initial data dict
             field_order: Custom field ordering
             title: Form title
-            render_type: Custom renderer class
-            **kwargs: Additional kwargs for renderer
+            layout_class: Custom layout class (overrides class-level layout_class)
+            **kwargs: Additional kwargs for layout
         """
         self.data = data
         self.children = children
         self.field_order = field_order
         self.title = title
         self.kwargs = kwargs
-        self.render_type = render_type
+
+        # Layout configuration
+        if layout_class is not None:
+            self._layout_class = layout_class
+        elif self.layout_class is not None:
+            self._layout_class = self.layout_class
+        else:
+            # Will use DefaultFormLayout (imported at module level)
+            from .layouts import DefaultFormLayout
+            self._layout_class = DefaultFormLayout
 
         # Create BoundFields from class-level Field definitions
         # NO MORE DEEP COPY - just create lightweight BoundField wrappers
         self.bound_fields: Dict[str, 'BoundField'] = {}
-        
+
         for name, field in self._base_fields.items():
             # Get initial value from data if provided
             initial = data.get(name) if data else None
             # Create BoundField (holds runtime state)
             bound_field = field.bind(self, name, initial)
             self.bound_fields[name] = bound_field
-            
+
             # Set as attribute for direct access (form.fieldname)
             setattr(self, name, bound_field)
 
         # Apply custom field ordering if provided
         self.order_fields(self.field_order)
-    
+
     @property
     def fields(self) -> Dict[str, 'BoundField']:
         """
         Backward compatibility: alias for bound_fields
-        
+
         Returns bound_fields so existing code using form.fields continues to work.
         """
         return self.bound_fields
@@ -299,7 +176,7 @@ class BaseForm:
         field = self.get_field(name)
         if field:
             return field
-        
+
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     @classmethod
@@ -371,20 +248,24 @@ class BaseForm:
                 f"Use the full qualified name to disambiguate."
             )
 
-    def render(self, id=None) -> RenderedForm:
-        """Render the form as a Textual widget"""
-        # Create widgets for all fields
-        for name, field in self.fields.items():
-            field.widget = field.create_widget()
+    def render(self, id=None):
+        """
+        Render the form as a Textual widget
 
-        # Create and return rendered form
-        self.rform = self.render_type(
-            self,
-            id=id,
-            data=self.data,
-            field_order=self.field_order
-        )
-        return self.rform
+        Creates a layout instance using the configured layout_class.
+        During rendering, sets self._current_layout so that field()
+        calls can track which fields have been rendered.
+
+        Returns:
+            Layout instance (e.g., DefaultFormLayout or custom layout)
+        """
+        # Create layout instance
+        layout = self._layout_class(self, id=id, **self.kwargs)
+
+        # Store layout reference so BoundField.__call__ can track rendering
+        self._current_layout = layout
+
+        return layout
 
     async def validate(self):
         """Validate all form fields"""
@@ -403,14 +284,14 @@ class BaseForm:
                 result = False
                 # Display errors
                 for msg in vr.failure_descriptions:
-                    container.mount(Center(Static(msg, classes="form-error")))
+                    container.mount(Center(Static(msg), classes="form-error"))
 
             # Field-level validation (required, custom Field validators)
             try:
                 field.clean(field.value)
             except ValidationError as e:
                 result = False
-                container.mount(Center(Static(str(e), classes="form-error")))
+                container.mount(Center(Static(str(e)), classes="form-error"))
 
         return result
 
@@ -422,12 +303,24 @@ class Form(BaseForm, metaclass=FormMetaclass):
 
     class Submitted(Message):
         """Posted when form is submitted successfully"""
-        def __init__(self, r_form: RenderedForm):
+        def __init__(self, layout):
+            """
+            Args:
+                layout: The FormLayout instance that submitted the form
+            """
             super().__init__()
-            self.form = r_form
+            self.layout = layout
+            # Provide backward compatibility
+            self.form = layout
 
     class Cancelled(Message):
         """Posted when form is cancelled"""
-        def __init__(self, r_form: RenderedForm):
+        def __init__(self, layout):
+            """
+            Args:
+                layout: The FormLayout instance that cancelled the form
+            """
             super().__init__()
-            self.form = r_form
+            self.layout = layout
+            # Provide backward compatibility
+            self.form = layout

@@ -65,7 +65,7 @@ class AdvancedFormScreen(Screen):
         align: center middle;
     }
 
-    RenderedForm {
+    DefaultFormLayout {
         width: 60;
         height: auto;
         max-height: 90%;
@@ -114,7 +114,7 @@ class AdvancedFormScreen(Screen):
 
     def reset_form(self):
         """Clear form and create fresh one"""
-        old_form = self.query_one("RenderedForm")
+        old_form = self.query_one("DefaultFormLayout")
         old_form.remove()
 
         self.form = ContactForm(title="Contact Information")

@@ -1168,7 +1168,7 @@ wheels = [
 
 [[package]]
 name = "textual-wtf"
-version = "0.8.0"
+version = "0.8.1"
 source = { editable = "." }
 dependencies = [
     { name = "textual" },

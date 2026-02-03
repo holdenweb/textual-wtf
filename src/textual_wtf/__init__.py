@@ -21,6 +21,7 @@ from .fields import (
     TextField,
 )
 from .forms import Form
+from .layouts import FormLayout, DefaultFormLayout
 from .validators import (
     EvenInteger,
     Palindromic,
@@ -51,6 +52,9 @@ __all__ = [
     "TextField",
     # Forms
     "Form",
+    # Layouts
+    "FormLayout",
+    "DefaultFormLayout",
     # Validators
     "EvenInteger",
     "Palindromic",
@@ -63,5 +67,5 @@ __all__ = [
     "FormSelect",
     "WidgetRegistry",
     # Structural
-    "__version__,"
+    "__version__",
 ]

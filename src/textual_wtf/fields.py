@@ -83,12 +83,15 @@ class Field(ABC):
         from .bound_fields import BoundField
         return BoundField(self, form, name, initial)
 
-    def create_widget(self) -> Widget:
+    def create_widget(self, widget_kwargs: Optional[dict] = None) -> Widget:
         """
         Factory method to create configured widget
         
         Note: This creates the widget but doesn't store it.
         The BoundField is responsible for storing widget instances.
+        
+        Args:
+            widget_kwargs: Optional additional kwargs to merge with self.widget_kwargs
         
         Returns:
             Configured widget instance
@@ -99,7 +102,10 @@ class Field(ABC):
                 f"or pass widget parameter"
             )
 
+        # Merge base kwargs with runtime kwargs
         kwargs = self.widget_kwargs.copy()
+        if widget_kwargs:
+            kwargs.update(widget_kwargs)
 
         # Pass validators to widget if it supports them
         if hasattr(self.widget_class, '__init__'):

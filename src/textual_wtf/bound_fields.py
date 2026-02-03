@@ -155,19 +155,64 @@ class BoundField:
     # Methods - Delegate to Field for logic
     # ========================================================================
     
-    def create_widget(self) -> Widget:
+    def create_widget(self, **kwargs) -> Widget:
         """
         Create widget using field configuration
+        
+        Args:
+            **kwargs: Additional keyword arguments to pass to widget constructor
         
         Returns:
             Widget instance configured from Field
         """
-        widget = self.field.create_widget()
+        # Merge kwargs with field's widget_kwargs
+        merged_kwargs = {**self.field.widget_kwargs, **kwargs}
+        
+        # Create widget with merged kwargs
+        widget = self.field.create_widget(widget_kwargs=merged_kwargs)
         self._widget_instance = widget
         # Set back-reference
         widget.bound_field = self
         # Also set field reference for backward compatibility
         widget.field = self
+        return widget
+    
+    def __call__(self, **kwargs) -> Widget:
+        """
+        Callable interface for rendering fields (WTForms-style)
+        
+        Creates and returns the widget, configured with any additional
+        keyword arguments. This is the primary way to render fields in
+        custom layouts.
+        
+        Args:
+            **kwargs: Keyword arguments to pass to widget constructor
+                     (e.g., placeholder="Enter name", disabled=True)
+        
+        Returns:
+            Widget instance configured from Field and kwargs
+        
+        Example:
+            # In a custom layout's compose_form():
+            yield self.form.name(placeholder="Enter your name")
+            yield self.form.email(disabled=True)
+        """
+        # Track rendering if we're inside a layout
+        if hasattr(self.form, '_current_layout'):
+            self.form._current_layout._track_field_render(self.name)
+        
+        # Create widget with kwargs if not already created
+        if self._widget_instance is None:
+            widget = self.create_widget(**kwargs)
+        else:
+            # Widget already exists - for now, just return it
+            # (Could optionally update widget properties from kwargs)
+            widget = self._widget_instance
+        
+        # Sync initial value to widget
+        if self._value is not None:
+            widget.value = self.field.to_widget(self._value)
+        
         return widget
     
     def to_python(self, value: Any) -> Any:

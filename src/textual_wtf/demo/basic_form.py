@@ -63,7 +63,7 @@ class BasicFormScreen(Screen):
     def reset_form(self):
         """Clear form and create fresh one"""
         # Remove old form
-        old_form = self.query_one("RenderedForm")
+        old_form = self.query_one("DefaultFormLayout")
         old_form.remove()
 
         # Create and mount new form

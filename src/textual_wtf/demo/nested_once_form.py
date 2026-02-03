@@ -73,7 +73,7 @@ class ShopScreen(Screen):
         align: center middle;
     }
 
-    RenderedForm {
+    DefaultFormLayout {
         width: 80;
         height: 100%;
         max-height: 100%;
@@ -138,7 +138,7 @@ class ShopScreen(Screen):
 
     def reset_form(self):
         """Clear form and create fresh one"""
-        old_form = self.query_one("RenderedForm")
+        old_form = self.query_one("DefaultFormLayout")
         old_form.remove()
 
         self.form = OrderForm(title="Order Form - Composed from Reusable Forms")
