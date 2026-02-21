@@ -7,8 +7,6 @@ from .bound_fields import BoundField
 from .exceptions import AmbiguousFieldError, FormError
 from .fields import Field
 
-import wingdbstub
-
 if TYPE_CHECKING:
     from .layouts import FormLayout
 
@@ -62,15 +60,15 @@ class FormMetaclass(type):
                         )
                     base_fields[prefixed] = field
 
-        # Build clean namespace (strip Field / ComposedForm entries).
-        clean: dict[str, Any] = {
+        # Build clean namespace (strip Field / ComposedForm entries, add _base_fields).
+        new_namespace: dict[str, Any] = {
             k: v
             for k, v in namespace.items()
             if not isinstance(v, (Field, ComposedForm))
         }
-        clean["_base_fields"] = base_fields
+        new_namespace["_base_fields"] = base_fields
 
-        return super().__new__(mcs, name, bases, clean)
+        return super().__new__(mcs, name, bases, new_namespace)
 
 
 # ── BaseForm ──────────────────────────────────────────────────────────────────

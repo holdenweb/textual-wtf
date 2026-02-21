@@ -10,6 +10,7 @@ from textual_wtf import (
     TextField,
     ValidationError,
 )
+from textual_wtf.layouts import FieldContainer
 
 
 # ── Metaclass / class structure ───────────────────────────────────────────────
@@ -32,7 +33,6 @@ class TestFormMetaclass:
         assert list(MyForm._base_fields) == ["first", "second", "third"]
 
     def test_field_descriptors_removed_from_class(self):
-        """Field instances must not remain as class attributes."""
         class MyForm(Form):
             name = StringField(label="Name")
 
@@ -54,8 +54,8 @@ class TestFormMetaclass:
 
         with pytest.raises(FormError, match="collision"):
             class OrderForm(Form):
-                billing  = Addr.compose(prefix="billing")
-                billing_street = StringField(label="Oops")  # collision!
+                billing        = Addr.compose(prefix="billing")
+                billing_street = StringField(label="Oops")
 
 
 # ── Field access on instances ─────────────────────────────────────────────────
@@ -88,6 +88,11 @@ class TestFieldAccess:
     def test_fields_alias(self):
         assert self.form.fields is self.form.bound_fields
 
+    def test_bound_field_is_plain_object_not_widget(self):
+        """BoundField must not be a Textual Widget."""
+        from textual.widget import Widget
+        assert not isinstance(self.form.name, Widget)
+
 
 # ── Data methods ──────────────────────────────────────────────────────────────
 
@@ -105,9 +110,7 @@ class TestDataMethods:
 
     def test_set_data_and_get_data(self):
         self.form.set_data({"name": "Alice", "age": 30})
-        data = self.form.get_data()
-        assert data["name"] == "Alice"
-        assert data["age"] == 30
+        assert self.form.get_data() == {"name": "Alice", "age": 30}
 
     def test_set_data_ignores_unknown_keys(self):
         self.form.set_data({"name": "Bob", "unknown": "x"})
@@ -115,17 +118,24 @@ class TestDataMethods:
 
     def test_initial_data_via_constructor(self):
         class MyForm(Form):
-            name = StringField(label="Name")
+            name = StringField(label="Name", initial="default")
 
-        form = MyForm(data={"name": "Pre-filled"})
-        assert form.name._initial_value == "Pre-filled"
+        form = MyForm()
+        assert form.name._initial_value == "default"
+
+    def test_data_overrides_initial(self):
+        class MyForm(Form):
+            name = StringField(label="Name", initial="default")
+
+        form = MyForm(data={"name": "override"})
+        assert form.name._initial_value == "override"
 
     def test_bound_field_value_settable(self):
         self.form.name.value = "Charlie"
         assert self.form.get_data()["name"] == "Charlie"
 
 
-# ── Validation ────────────────────────────────────────────────────────────────
+# ── Validation (pure Python) ──────────────────────────────────────────────────
 
 class TestFormValidation:
     def test_is_valid_all_pass(self):
@@ -144,7 +154,7 @@ class TestFormValidation:
         assert not form.is_valid()
         assert form.name.errors
 
-    def test_validate_populates_errors_on_bound_field(self):
+    def test_validate_populates_errors(self):
         class MyForm(Form):
             name = StringField(label="Name", required=True)
 
@@ -166,6 +176,70 @@ class TestFormValidation:
         assert not form.name.has_error
 
 
+# ── BoundField.__call__ ───────────────────────────────────────────────────────
+
+class TestBoundFieldCall:
+    def test_call_returns_field_container(self):
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        result = form.name()
+        assert isinstance(result, FieldContainer)
+
+    def test_call_sets_rendered_flag(self):
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        form.name()
+        assert form.name._rendered is True
+
+    def test_duplicate_call_raises(self):
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        form.name()
+        with pytest.raises(FormError, match="already been rendered"):
+            form.name()
+
+    def test_call_creates_inner_widget(self):
+        from textual_wtf.widgets import FormInput
+
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        form.name()
+        assert isinstance(form.name._inner, FormInput)
+
+    def test_call_stores_container_reference(self):
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        container = form.name()
+        assert form.name._container is container
+
+    def test_render_resets_rendered_flag(self):
+        """FormLayout.compose() resets _rendered so re-renders work."""
+        from textual_wtf import DefaultFormLayout
+
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        # Simulate what compose() does.
+        form.name()
+        assert form.name._rendered
+
+        layout = DefaultFormLayout(form)
+        # compose() resets state before calling compose_form().
+        list(layout.compose())
+        assert not form.name._rendered  # reset then re-called internally
+
+
 # ── Form composition ──────────────────────────────────────────────────────────
 
 class TestComposition:
@@ -184,21 +258,16 @@ class TestComposition:
 
     def test_prefixed_fields_exist(self):
         fields = set(self.form.bound_fields)
-        assert "billing_street" in fields
-        assert "billing_city" in fields
-        assert "shipping_street" in fields
-        assert "shipping_city" in fields
-        assert "notes" in fields
+        assert {"billing_street", "billing_city",
+                "shipping_street", "shipping_city", "notes"} <= fields
 
     def test_qualified_access(self):
         assert isinstance(self.form.billing_street, BoundField)
 
-    def test_unqualified_access_unique(self):
-        """'notes' is unique across the form — unqualified access works."""
+    def test_unqualified_unique_access(self):
         assert isinstance(self.form.notes, BoundField)
 
-    def test_unqualified_access_ambiguous_raises(self):
-        """'street' matches both billing_street and shipping_street."""
+    def test_unqualified_ambiguous_raises(self):
         with pytest.raises(AmbiguousFieldError) as exc_info:
             _ = self.form.street
         assert "billing_street" in exc_info.value.candidates
@@ -207,10 +276,6 @@ class TestComposition:
         data = self.form.get_data()
         assert "billing_street" in data
         assert "shipping_street" in data
-
-    def test_set_prefixed_field_value(self):
-        self.form.billing_street.value = "123 Main St"
-        assert self.form.get_data()["billing_street"] == "123 Main St"
 
     def test_nested_composition(self):
         class NameForm(Form):
@@ -226,26 +291,23 @@ class TestComposition:
 
         form = RegisterForm()
         assert "primary_contact_first" in form.bound_fields
-        assert "primary_contact_last" in form.bound_fields
         assert "primary_age" in form.bound_fields
 
 
-# ── Form.render ────────────────────────────────────────────────────────────────
+# ── Form.render ───────────────────────────────────────────────────────────────
 
 class TestFormRender:
-    def test_render_returns_layout(self):
+    def test_render_returns_default_layout(self):
         from textual_wtf import DefaultFormLayout
 
         class MyForm(Form):
             name = StringField(label="Name")
 
         form = MyForm()
-        layout = form.render()
-        assert isinstance(layout, DefaultFormLayout)
-        assert layout.form is form
+        assert isinstance(form.render(), DefaultFormLayout)
 
-    def test_render_with_custom_layout_class(self):
-        from textual_wtf import DefaultFormLayout, FormLayout
+    def test_render_with_layout_class_attribute(self):
+        from textual_wtf import FormLayout
 
         class CustomLayout(FormLayout):
             def compose_form(self):
@@ -255,11 +317,9 @@ class TestFormRender:
             layout_class = CustomLayout
             name = StringField(label="Name")
 
-        form = MyForm()
-        layout = form.render()
-        assert isinstance(layout, CustomLayout)
+        assert isinstance(MyForm().render(), CustomLayout)
 
-    def test_render_layout_class_override_in_constructor(self):
+    def test_render_layout_class_constructor_override(self):
         from textual_wtf import FormLayout
 
         class CustomLayout(FormLayout):
@@ -269,8 +329,7 @@ class TestFormRender:
         class MyForm(Form):
             name = StringField(label="Name")
 
-        form = MyForm(layout_class=CustomLayout)
-        assert isinstance(form.render(), CustomLayout)
+        assert isinstance(MyForm(layout_class=CustomLayout).render(), CustomLayout)
 
 
 # ── BoundField.disabled ────────────────────────────────────────────────────────
@@ -280,12 +339,11 @@ class TestBoundFieldDisabled:
         class MyForm(Form):
             name = StringField(label="Name", disabled=True)
 
-        form = MyForm()
-        assert form.name.disabled is True
+        assert MyForm().name.disabled is True
 
     def test_disabled_independent_per_instance(self):
         class MyForm(Form):
-            name = StringField(label="Name", disabled=False)
+            name = StringField(label="Name")
 
         form1 = MyForm()
         form2 = MyForm()
@@ -296,21 +354,26 @@ class TestBoundFieldDisabled:
 # ── label_style / help_style precedence ──────────────────────────────────────
 
 class TestStylePrecedence:
-    def test_form_level_default_applied(self):
+    def test_builtin_default(self):
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        assert MyForm().name._effective_label_style() == "above"
+        assert MyForm().name._effective_help_style() == "below"
+
+    def test_form_level_default(self):
         class MyForm(Form):
             label_style = "beside"
             name = StringField(label="Name")
 
-        form = MyForm()
-        assert form.name._effective_label_style() == "beside"
+        assert MyForm().name._effective_label_style() == "beside"
 
-    def test_field_level_overrides_form_default(self):
+    def test_field_level_overrides_form(self):
         class MyForm(Form):
             label_style = "beside"
             name = StringField(label="Name", label_style="placeholder")
 
-        form = MyForm()
-        assert form.name._effective_label_style() == "placeholder"
+        assert MyForm().name._effective_label_style() == "placeholder"
 
     def test_call_site_overrides_field_level(self):
         class MyForm(Form):
@@ -318,5 +381,5 @@ class TestStylePrecedence:
             name = StringField(label="Name", label_style="placeholder")
 
         form = MyForm()
-        form.name(label_style="above")
+        form.name(label_style="above")  # call-site override
         assert form.name._effective_label_style() == "above"

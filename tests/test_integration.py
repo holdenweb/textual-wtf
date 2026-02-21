@@ -1,8 +1,4 @@
-"""Integration tests using Textual's run_test() headless runner.
-
-These tests verify rendering, user interaction, validation feedback, and
-form submission through the full Textual widget stack.
-"""
+"""Integration tests using Textual's run_test() headless runner."""
 from __future__ import annotations
 
 import pytest
@@ -12,23 +8,19 @@ from textual.widgets import Button
 
 from textual_wtf import (
     BooleanField,
-    ChoiceField,
     DefaultFormLayout,
     Form,
     FormLayout,
     IntegerField,
-    Required,
     StringField,
     TextField,
-    ValidationError,
 )
+from textual_wtf.layouts import FieldContainer
 
 
-# ── Test helpers ──────────────────────────────────────────────────────────────
+# ── Test app helper ───────────────────────────────────────────────────────────
 
 def make_app(form: Form) -> App:
-    """Wrap a form in a minimal Textual App for testing."""
-
     class TestApp(App):
         CSS = "Screen { align: center middle; }"
 
@@ -50,63 +42,82 @@ def make_app(form: Form) -> App:
     return TestApp(form)
 
 
-# ── Rendering tests ───────────────────────────────────────────────────────────
+# ── Rendering ─────────────────────────────────────────────────────────────────
 
 class TestRendering:
     async def test_default_layout_mounts(self):
-        class SimpleForm(Form):
+        class MyForm(Form):
             name = StringField(label="Name")
 
-        app = make_app(SimpleForm())
-        async with app.run_test() as pilot:
-            layout = app.query_one(DefaultFormLayout)
-            assert layout is not None
+        app = make_app(MyForm())
+        async with app.run_test():
+            assert app.query_one(DefaultFormLayout) is not None
 
-    async def test_all_fields_rendered(self):
+    async def test_field_containers_rendered(self):
         class MyForm(Form):
             name  = StringField(label="Name")
             email = StringField(label="Email")
 
         app = make_app(MyForm())
-        async with app.run_test() as pilot:
+        async with app.run_test():
+            assert len(app.query(FieldContainer)) == 2
+
+    async def test_inner_widgets_rendered(self):
+        class MyForm(Form):
+            name  = StringField(label="Name")
+            email = StringField(label="Email")
+
+        app = make_app(MyForm())
+        async with app.run_test():
             from textual_wtf.widgets import FormInput
-            inputs = app.query(FormInput)
-            assert len(inputs) == 2
+            assert len(app.query(FormInput)) == 2
 
     async def test_submit_and_cancel_buttons_present(self):
         class MyForm(Form):
             name = StringField(label="Name")
 
         app = make_app(MyForm())
-        async with app.run_test() as pilot:
-            submit = app.query_one("#submit", Button)
-            cancel = app.query_one("#cancel", Button)
-            assert submit is not None
-            assert cancel is not None
+        async with app.run_test():
+            assert app.query_one("#submit", Button) is not None
+            assert app.query_one("#cancel", Button) is not None
 
-    async def test_duplicate_field_render_raises(self):
+    async def test_duplicate_render_raises(self):
         class MyForm(Form):
             name = StringField(label="Name")
 
         class DuplicateLayout(FormLayout):
             def compose_form(self):
                 yield self.form.name()
-                yield self.form.name()  # duplicate!
+                yield self.form.name()  # second yield → FormError
 
-        class MyFormWithBadLayout(Form):
+        class MyForm2(Form):
             layout_class = DuplicateLayout
             name = StringField(label="Name")
 
-        app = make_app(MyFormWithBadLayout())
-        with pytest.raises(Exception):  # FormError raised during compose
+        app = make_app(MyForm2())
+        with pytest.raises(Exception):
             async with app.run_test():
                 pass
 
+    async def test_bound_field_not_in_widget_tree(self):
+        """BoundField is a plain object; it must not appear in the DOM."""
+        from textual_wtf import BoundField
+        from textual.widget import Widget
 
-# ── User input tests ──────────────────────────────────────────────────────────
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        app = make_app(MyForm())
+        async with app.run_test():
+            # BoundField is not a Widget, so querying it would raise a TypeError.
+            # We verify the absence by checking it's not a Widget subclass.
+            assert not issubclass(BoundField, Widget)
+
+
+# ── User input ────────────────────────────────────────────────────────────────
 
 class TestUserInput:
-    async def test_typing_updates_value(self):
+    async def test_typing_updates_bound_field_value(self):
         class MyForm(Form):
             name = StringField(label="Name")
 
@@ -117,10 +128,9 @@ class TestUserInput:
             inp = app.query_one(FormInput)
             await pilot.click(inp)
             await pilot.press("A", "l", "i", "c", "e")
-            # Value is read from the widget via reactive
             assert form.name.value == "Alice"
 
-    async def test_integer_field_accepts_numbers(self):
+    async def test_integer_field_value_converted(self):
         class MyForm(Form):
             age = IntegerField(label="Age")
 
@@ -142,11 +152,11 @@ class TestUserInput:
         async with app.run_test() as pilot:
             from textual_wtf.widgets import FormCheckbox
             cb = app.query_one(FormCheckbox)
-            initial = form.active.value
+            before = form.active.value
             await pilot.click(cb)
-            assert form.active.value != initial
+            assert form.active.value != before
 
-    async def test_programmatic_value_shown_in_widget(self):
+    async def test_programmatic_set_reflected_in_widget(self):
         class MyForm(Form):
             name = StringField(label="Name")
 
@@ -155,12 +165,24 @@ class TestUserInput:
         async with app.run_test() as pilot:
             from textual_wtf.widgets import FormInput
             form.name.value = "Prefilled"
-            await pilot.pause()  # allow reactive to propagate
-            inp = app.query_one(FormInput)
-            assert inp.value == "Prefilled"
+            await pilot.pause()
+            assert app.query_one(FormInput).value == "Prefilled"
+
+    async def test_is_dirty_set_on_user_input(self):
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        app = make_app(form)
+        async with app.run_test() as pilot:
+            from textual_wtf.widgets import FormInput
+            assert not form.name.is_dirty
+            await pilot.click(app.query_one(FormInput))
+            await pilot.press("X")
+            assert form.name.is_dirty
 
 
-# ── Validation tests ──────────────────────────────────────────────────────────
+# ── Validation ────────────────────────────────────────────────────────────────
 
 class TestValidation:
     async def test_required_field_blocks_submit(self):
@@ -182,44 +204,63 @@ class TestValidation:
         app = make_app(form)
         async with app.run_test() as pilot:
             from textual_wtf.widgets import FormInput
-            inp = app.query_one(FormInput)
-            await pilot.click(inp)
+            await pilot.click(app.query_one(FormInput))
             await pilot.press("B", "o", "b")
             await pilot.click("#submit")
             assert app.submitted_data is not None
             assert app.submitted_data["name"] == "Bob"
 
-    async def test_cancel_posts_cancelled_message(self):
+    async def test_cancel_posts_message(self):
         class MyForm(Form):
             name = StringField(label="Name")
 
-        form = MyForm()
-        app = make_app(form)
+        app = make_app(MyForm())
         async with app.run_test() as pilot:
             await pilot.click("#cancel")
             assert app.cancelled
 
-    async def test_error_cleared_after_correction(self):
+    async def test_blur_triggers_validation(self):
         class MyForm(Form):
             name = StringField(label="Name", required=True)
 
         form = MyForm()
         app = make_app(form)
         async with app.run_test() as pilot:
-            # Submit empty → error.
+            from textual_wtf.widgets import FormInput
+            await pilot.click(app.query_one(FormInput))
+            await pilot.press("tab")   # move focus away → blur
+            assert form.name.has_error
+
+    async def test_error_widget_shown_after_validation(self):
+        class MyForm(Form):
+            name = StringField(label="Name", required=True)
+
+        form = MyForm()
+        app = make_app(form)
+        async with app.run_test() as pilot:
+            await pilot.click("#submit")
+            error = app.query_one(".field-error", Static)
+            assert error.display
+        from textual.widgets import Static  # noqa (used above)
+
+    async def test_error_cleared_after_fix(self):
+        class MyForm(Form):
+            name = StringField(label="Name", required=True)
+
+        form = MyForm()
+        app = make_app(form)
+        async with app.run_test() as pilot:
             await pilot.click("#submit")
             assert form.name.has_error
 
-            # Type something → re-submit → no error.
             from textual_wtf.widgets import FormInput
-            inp = app.query_one(FormInput)
-            await pilot.click(inp)
+            await pilot.click(app.query_one(FormInput))
             await pilot.press("A", "l", "i", "c", "e")
             await pilot.click("#submit")
             assert not form.name.has_error
 
 
-# ── Custom layout tests ───────────────────────────────────────────────────────
+# ── Custom layouts ────────────────────────────────────────────────────────────
 
 class TestCustomLayout:
     async def test_custom_compose_form(self):
@@ -238,14 +279,10 @@ class TestCustomLayout:
 
         form = MyForm(layout_class=SideBySide)
         app = make_app(form)
-        async with app.run_test() as pilot:
-            from textual_wtf.widgets import FormInput
-            inputs = list(app.query(FormInput))
-            assert len(inputs) == 2
+        async with app.run_test():
+            assert len(app.query(FieldContainer)) == 2
 
-    async def test_call_site_label_style_override(self):
-        """label_style passed to __call__ takes effect in composed DOM."""
-
+    async def test_beside_label_style_creates_field_row(self):
         class MyForm(Form):
             name = StringField(label="Name")
 
@@ -258,39 +295,48 @@ class TestCustomLayout:
 
         form = MyForm(layout_class=BesideLayout)
         app = make_app(form)
-        async with app.run_test() as pilot:
-            from textual.containers import Horizontal as H
-            # "beside" style wraps label+input in a Horizontal.
-            rows = app.query(".field-row")
-            assert len(rows) == 1
+        async with app.run_test():
+            assert len(app.query(".field-row")) == 1
 
-    async def test_initial_value_displayed(self):
+    async def test_initial_value_shown_in_widget(self):
         class MyForm(Form):
             name = StringField(label="Name", initial="Hello")
 
-        form = MyForm()
-        app = make_app(form)
-        async with app.run_test() as pilot:
+        app = make_app(MyForm())
+        async with app.run_test():
             from textual_wtf.widgets import FormInput
-            inp = app.query_one(FormInput)
-            assert inp.value == "Hello"
+            assert app.query_one(FormInput).value == "Hello"
 
     async def test_disabled_field_not_editable(self):
         class MyForm(Form):
             name = StringField(label="Name", disabled=True)
 
-        form = MyForm()
-        app = make_app(form)
-        async with app.run_test() as pilot:
+        app = make_app(MyForm())
+        async with app.run_test():
             from textual_wtf.widgets import FormInput
-            inp = app.query_one(FormInput)
-            assert inp.disabled
+            assert app.query_one(FormInput).disabled
+
+    async def test_call_site_disabled_override(self):
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        class DisableLayout(FormLayout):
+            def compose_form(self):
+                yield self.form.name(disabled=True)
+                with Horizontal(id="buttons"):
+                    yield Button("Submit", id="submit", variant="primary")
+                    yield Button("Cancel", id="cancel")
+
+        app = make_app(MyForm(layout_class=DisableLayout))
+        async with app.run_test():
+            from textual_wtf.widgets import FormInput
+            assert app.query_one(FormInput).disabled
 
 
 # ── Composed form integration ─────────────────────────────────────────────────
 
 class TestComposedFormIntegration:
-    async def test_composed_form_renders_all_fields(self):
+    async def test_all_fields_rendered(self):
         class AddressForm(Form):
             street = StringField(label="Street")
             city   = StringField(label="City")
@@ -299,12 +345,9 @@ class TestComposedFormIntegration:
             billing  = AddressForm.compose(prefix="billing")
             shipping = AddressForm.compose(prefix="shipping")
 
-        form = OrderForm()
-        app = make_app(form)
-        async with app.run_test() as pilot:
-            from textual_wtf.widgets import FormInput
-            inputs = list(app.query(FormInput))
-            assert len(inputs) == 4  # 2 billing + 2 shipping
+        app = make_app(OrderForm())
+        async with app.run_test():
+            assert len(app.query(FieldContainer)) == 4
 
     async def test_composed_field_value_in_submitted_data(self):
         class AddressForm(Form):
