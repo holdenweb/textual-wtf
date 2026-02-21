@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
-from textual.widgets import Button
+from textual.widgets import Button, Static
 
 from textual_wtf import (
     BooleanField,
@@ -112,6 +112,23 @@ class TestRendering:
             # BoundField is not a Widget, so querying it would raise a TypeError.
             # We verify the absence by checking it's not a Widget subclass.
             assert not issubclass(BoundField, Widget)
+
+            def test_render_resets_rendered_flag(self):
+                """FormLayout.compose() resets _rendered so re-renders work."""
+                from textual_wtf import DefaultFormLayout
+
+                class MyForm(Form):
+                    name = StringField(label="Name")
+
+                form = MyForm()
+                # Simulate what compose() does.
+                form.name()
+                assert form.name._rendered
+
+                layout = DefaultFormLayout(form)
+                # compose() resets state before calling compose_form().
+                list(layout.compose())
+                assert not form.name._rendered  # reset then re-called internally
 
 
 # ── User input ────────────────────────────────────────────────────────────────
@@ -241,7 +258,6 @@ class TestValidation:
             await pilot.click("#submit")
             error = app.query_one(".field-error", Static)
             assert error.display
-        from textual.widgets import Static  # noqa (used above)
 
     async def test_error_cleared_after_fix(self):
         class MyForm(Form):

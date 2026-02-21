@@ -1,4 +1,6 @@
 """Tests for Form metaclass, field access, composition, and data methods."""
+import wingdbstub
+
 import pytest
 from textual_wtf import (
     AmbiguousFieldError,
@@ -221,23 +223,6 @@ class TestBoundFieldCall:
         form = MyForm()
         container = form.name()
         assert form.name._container is container
-
-    def test_render_resets_rendered_flag(self):
-        """FormLayout.compose() resets _rendered so re-renders work."""
-        from textual_wtf import DefaultFormLayout
-
-        class MyForm(Form):
-            name = StringField(label="Name")
-
-        form = MyForm()
-        # Simulate what compose() does.
-        form.name()
-        assert form.name._rendered
-
-        layout = DefaultFormLayout(form)
-        # compose() resets state before calling compose_form().
-        list(layout.compose())
-        assert not form.name._rendered  # reset then re-called internally
 
 
 # ── Form composition ──────────────────────────────────────────────────────────

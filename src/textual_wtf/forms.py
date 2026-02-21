@@ -46,6 +46,10 @@ class FormMetaclass(type):
         # Process this class's namespace in declaration order.
         for key, val in namespace.items():
             if isinstance(val, Field):
+                if key in base_fields:
+                    raise FormError(
+                        f"Field name collision in field: '{key}'."
+                    )
                 base_fields[key] = val
             elif isinstance(val, ComposedForm):
                 if not hasattr(val.form_class, "_base_fields"):
@@ -56,7 +60,7 @@ class FormMetaclass(type):
                     prefixed = f"{val.prefix}_{fname}"
                     if prefixed in base_fields:
                         raise FormError(
-                            f"Field name collision after composition: '{prefixed}'."
+                            f"Field name collision in embedded form: '{prefixed}'."
                         )
                     base_fields[prefixed] = field
 
