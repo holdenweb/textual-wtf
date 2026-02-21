@@ -113,23 +113,6 @@ class TestRendering:
             # We verify the absence by checking it's not a Widget subclass.
             assert not issubclass(BoundField, Widget)
 
-            def test_render_resets_rendered_flag(self):
-                """FormLayout.compose() resets _rendered so re-renders work."""
-                from textual_wtf import DefaultFormLayout
-
-                class MyForm(Form):
-                    name = StringField(label="Name")
-
-                form = MyForm()
-                # Simulate what compose() does.
-                form.name()
-                assert form.name._rendered
-
-                layout = DefaultFormLayout(form)
-                # compose() resets state before calling compose_form().
-                list(layout.compose())
-                assert not form.name._rendered  # reset then re-called internally
-
 
 # ── User input ────────────────────────────────────────────────────────────────
 
@@ -275,6 +258,38 @@ class TestValidation:
             await pilot.click("#submit")
             assert not form.name.has_error
 
+    def test_render_resets_rendered_flag(self):
+        """FormLayout.compose() resets _rendered so re-renders work."""
+        from textual_wtf import DefaultFormLayout
+
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+        # Simulate what compose() does.
+        form.name()
+        assert form.name._rendered
+
+        layout = DefaultFormLayout(form)
+        # compose() resets state before calling compose_form().
+        list(layout.compose())
+        assert not form.name._rendered  # reset then re-called internally
+
+    async def test_render_resets_rendered_flag(self):
+        """FormLayout.compose() resets _rendered so re-renders work."""
+        class MyForm(Form):
+            name = StringField(label="Name")
+
+        form = MyForm()
+
+        # Manually call once to set the flag, simulating a prior render.
+        form.name()
+        assert form.name._rendered
+
+        # Now mount in a real app — compose() resets state before compose_form().
+        app = make_app(form)
+        async with app.run_test():
+            assert not form.name._rendered  # reset then re-called by compose_form()
 
 # ── Custom layouts ────────────────────────────────────────────────────────────
 
