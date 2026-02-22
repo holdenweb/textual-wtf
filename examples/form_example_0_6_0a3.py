@@ -17,14 +17,14 @@ from textual_wtf import Form, StringField, IntegerField, Required, MinLength
 
 class UserForm(Form):
     """Simple user form using declarative syntax."""
-    
+
     name = StringField(
         label="Name",
         required=True,
         validators=[Required(), MinLength(3)],
         placeholder="Enter your name"
     )
-    
+
     age = IntegerField(
         label="Age",
         required=False,
@@ -36,35 +36,35 @@ class UserForm(Form):
 
 class FormApp(App):
     """App demonstrating the new Form/BoundField architecture."""
-    
+
     CSS = """
     Screen {
         align: center middle;
     }
-    
+
     #form-container {
         width: 60;
         border: solid $primary;
         padding: 1 2;
     }
-    
+
     Button {
         margin: 1 0;
     }
     """
-    
+
     def compose(self) -> ComposeResult:
         """Create the form."""
         with Container(id="form-container"):
             # Create form instance
             self.form = UserForm()
-            
+
             # Render form fields (they're BoundField widgets now)
-            for bound_field in self.form._bound_fields.values():
+            for bound_field in self.form.bound_fields.values():
                 yield bound_field
-            
+
             yield Button("Submit", variant="primary", id="submit")
-    
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle submit button."""
         if event.button.id == "submit":

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pytest
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, on
 from textual.containers import Horizontal
 from textual.widgets import Button, Static
 
@@ -33,10 +33,12 @@ def make_app(form: Form) -> App:
         def compose(self) -> ComposeResult:
             yield self.form.render()
 
-        def on_form_layout_submitted(self, event: FormLayout.Submitted) -> None:
+        @on(Form.Submitted)
+        def on_submitted(self, event: FormLayout.Submitted) -> None:
             self.submitted_data = event.form.get_data()
 
-        def on_form_layout_cancelled(self, event: FormLayout.Cancelled) -> None:
+        @on(Form.Cancelled)
+        def on_cancelled(self, event: FormLayout.Cancelled) -> None:
             self.cancelled = True
 
     return TestApp(form)

@@ -4,7 +4,7 @@ Example demonstrating different FieldContainer layout options.
 Run with: python examples/layout_options_demo.py
 """
 
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, on
 from textual.containers import Vertical
 from textual.widgets import Static
 from textual_wtf import Form, StringField, IntegerField, Required, MinLength
@@ -158,7 +158,8 @@ class LayoutDemoApp(App):
             form3 = PlaceholderForm()
             yield form3.render()
 
-    def on_form_submitted(self, event: Form.Submitted) -> None:
+    @on(From.Submitted)
+    def on_submitted(self, event: Form.Submitted) -> None:
         """Handle form submission."""
         if event.form.is_valid():
             data = event.form.get_data()
@@ -166,7 +167,8 @@ class LayoutDemoApp(App):
         else:
             self.notify("Please fix errors", severity="error")
 
-    def on_form_cancelled(self, event: Form.Cancelled) -> None:
+    @on(Form.Cancelled)
+    def on_cancelled(self, event: Form.Cancelled) -> None:
         """Handle form cancellation."""
         self.notify("Form cancelled", severity="warning")
 

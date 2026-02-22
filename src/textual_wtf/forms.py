@@ -7,6 +7,9 @@ from .bound_fields import BoundField
 from .exceptions import AmbiguousFieldError, FormError
 from .fields import Field
 
+from textual.message import Message
+
+
 if TYPE_CHECKING:
     from .layouts import FormLayout
 
@@ -220,3 +223,22 @@ class Form(BaseForm, metaclass=FormMetaclass):
                 notes    = TextField(label="Notes")
         """
         return ComposedForm(cls, prefix, title)
+
+    # ── Messages ──────────────────────────────────────────────────────────────
+
+    class Submitted(Message):
+        """Posted when the user submits the form (all fields valid)."""
+
+        def __init__(self, layout: FormLayout, form: BaseForm) -> None:
+            super().__init__()
+            self.layout = layout
+            self.form = form
+
+    class Cancelled(Message):
+        """Posted when the user cancels the form."""
+
+        def __init__(self, layout: FormLayout, form: BaseForm) -> None:
+            super().__init__()
+            self.layout = layout
+            self.form = form
+

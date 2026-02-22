@@ -32,10 +32,10 @@ from typing import Any, TYPE_CHECKING
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.message import Message
 from textual.widgets import Button, Label, Static
 
 from .widgets import FormBlurred, FormValueChanged
+from textual_wtf import Form
 
 if TYPE_CHECKING:
     from .bound_fields import BoundField
@@ -190,24 +190,6 @@ class FormLayout(VerticalScroll):
     }
     """
 
-    # ── Messages ──────────────────────────────────────────────────────────────
-
-    class Submitted(Message):
-        """Posted when the user submits the form (all fields valid)."""
-
-        def __init__(self, layout: FormLayout, form: BaseForm) -> None:
-            super().__init__()
-            self.layout = layout
-            self.form = form
-
-    class Cancelled(Message):
-        """Posted when the user cancels the form."""
-
-        def __init__(self, layout: FormLayout, form: BaseForm) -> None:
-            super().__init__()
-            self.layout = layout
-            self.form = form
-
     # ── Construction ──────────────────────────────────────────────────────────
 
     def __init__(
@@ -255,10 +237,10 @@ class FormLayout(VerticalScroll):
 
     def _do_submit(self) -> None:
         if self.form.validate():
-            self.post_message(self.Submitted(self, self.form))
+            self.post_message(Form.Submitted(self, self.form))
 
     def _do_cancel(self) -> None:
-        self.post_message(self.Cancelled(self, self.form))
+        self.post_message(Form.Cancelled(self, self.form))
 
     # ── Event handlers ────────────────────────────────────────────────────────
 

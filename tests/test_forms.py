@@ -1,6 +1,4 @@
 """Tests for Form metaclass, field access, composition, and data methods."""
-import wingdbstub
-
 import pytest
 from textual_wtf import (
     AmbiguousFieldError,
