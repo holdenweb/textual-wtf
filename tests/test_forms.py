@@ -1,4 +1,6 @@
 """Tests for Form metaclass, field access, composition, and data methods."""
+import wingdbstub
+
 import pytest
 from textual_wtf import (
     AmbiguousFieldError,
@@ -201,7 +203,7 @@ class TestBoundFieldCall:
 
         form = MyForm()
         form.name()
-        with pytest.raises(FormError, match="already been rendered"):
+        with pytest.raises(FormError, match="doubly rendered"):
             form.name()
 
     def test_call_creates_inner_widget(self):

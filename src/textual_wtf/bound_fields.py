@@ -172,7 +172,7 @@ class BoundField:
         """
         if self._rendered:
             raise FormError(
-                f"Field '{self.name}' has already been rendered in this layout."
+                f"Field '{self.name}' is doubly rendered in this layout."
                 " Each field may only be yielded once."
             )
         self._rendered = True
