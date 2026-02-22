@@ -4,13 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "textual-wtf"
-version = "0.9.0a2"
+version = "0.9.0a3"
 description = "Declarative forms library for Textual TUI applications"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Steve Holden" }]
-dependencies = ["textual>=0.47.0"]
+dependencies = [
+    "textual>=0.47.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -24,3 +26,8 @@ testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/textual_wtf"]
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.3.0",
+]

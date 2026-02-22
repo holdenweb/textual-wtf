@@ -191,7 +191,7 @@ wheels = [
 
 [[package]]
 name = "textual-wtf"
-version = "0.9.0a2"
+version = "0.9.0a3"
 source = { editable = "." }
 dependencies = [
     { name = "textual" },
@@ -203,6 +203,11 @@ dev = [
     { name = "pytest-asyncio" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pytest-asyncio" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
@@ -210,6 +215,9 @@ requires-dist = [
     { name = "textual", specifier = ">=0.47.0" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest-asyncio", specifier = ">=1.3.0" }]
 
 [[package]]
 name = "tomli"
