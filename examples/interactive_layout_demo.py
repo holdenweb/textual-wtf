@@ -11,7 +11,7 @@ from textual.app import App, ComposeResult, on
 from textual.containers import Vertical, Container, ScrollableContainer
 from textual.widgets import Static, RadioButton, RadioSet
 from textual_wtf import Form, StringField, IntegerField, Required, MinLength
-
+from textual_wtf.layouts import FormLayout
 
 class DemoForm(Form):
     """Demo form with configurable layout."""
@@ -34,6 +34,7 @@ class DemoForm(Form):
         help_text="Enter your age in years"
     )
 
+class MyFormLayout
 
 class InteractiveDemoApp(App):
     """Interactive app for exploring layout options."""
