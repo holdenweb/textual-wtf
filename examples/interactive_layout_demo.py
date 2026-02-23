@@ -5,13 +5,12 @@ Use radio buttons to switch between different layout styles in real-time.
 
 Run with: python examples/interactive_layout_demo.py
 """
-import wingdbstub
 
-from textual.app import App, ComposeResult, on
+from textual.app import App, ComposeResult
 from textual.containers import Vertical, Container, ScrollableContainer
 from textual.widgets import Static, RadioButton, RadioSet
 from textual_wtf import Form, StringField, IntegerField, Required, MinLength
-from textual_wtf.layouts import FormLayout
+
 
 class DemoForm(Form):
     """Demo form with configurable layout."""
@@ -34,7 +33,6 @@ class DemoForm(Form):
         help_text="Enter your age in years"
     )
 
-class MyFormLayout
 
 class InteractiveDemoApp(App):
     """Interactive app for exploring layout options."""
@@ -250,14 +248,13 @@ class InteractiveDemoApp(App):
         # If help_style is tooltip, add tooltips to field containers
         if self.current_form.field_container_defaults.get('help_style') == 'tooltip':
             for bound_field in self.current_form.bound_fields.values():
-                if bound_field.field.help_text and hasattr(bound_field, 'widget') and bound_field.widget:
+                if bound_field.field.help_text and hasattr(bound_field, "widghet") and bound_field.widget:
                     # Set tooltip on the widget
                     bound_field.widget.tooltip = bound_field.field.help_text
 
         form_container.mount(layout)
 
-    @on(Form.Submitted)
-    def on_submit(self, event: Form.Submitted) -> None:
+    def on_form_submitted(self, event: Form.Submitted) -> None:
         """Handle form submission."""
         if event.form.is_valid():
             data = event.form.get_data()
@@ -265,8 +262,7 @@ class InteractiveDemoApp(App):
         else:
             self.notify("Please fix errors before submitting", severity="error")
 
-    @on(Form.Cancelled)
-    def on_cancell(self, event: Form.Cancelled) -> None:
+    def on_form_cancelled(self, event: Form.Cancelled) -> None:
         """Handle form cancellation."""
         self.notify("Form cancelled", severity="warning")
 
