@@ -87,6 +87,8 @@ dictionary under the field's name; not normally called directly.
 ## 2. Field subclasses
 
 All subclasses accept every parameter of `Field` in addition to their own.
+Each is a thin wrapper around the appropriate Textual widget to provide a more
+uniform interface.
 
 ### `StringField`
 
@@ -157,15 +159,15 @@ No additional parameters.
 ## 3. `BoundField`
 
 ```python
-class BoundField(Vertical, FieldMixin)
+class BoundField(Container)
 ```
 
 Mutable runtime state for one field within one form instance. Also a
-Textual `Vertical` container widget: when mounted, it composes its own
+Textual `Container` widget, so it can be configured for horizontal or vertical orientations: when mounted, it composes its own
 label, inner input widget, optional help text, and error display.
 
 Created by `Field.bind()` during `BaseForm.__init__()`, which stores
-them in the Form instances bound_fields attribute . Not instantiated
+them in the Form instances' bound_fields dictionary . Not instantiated
 directly.
 
 ### Constructor
@@ -175,7 +177,7 @@ BoundField(
     field: Field,
     form: BaseForm,
     name: str,
-    initial: Any = None,
+    data: dict[str, Any]
 )
 ```
 
@@ -219,27 +221,6 @@ automatically.
 Convert a Python value to the representation expected by the widget
 (typically a string).
 
-#### `validate`
-
-```python
-def validate(self, value: Any) -> None
-```
-
-Run all field-level validators against `value` (already converted via
-`to_python`). Raises `ValidationError` on the first failure.
-
-#### `clean`
-
-```python
-def clean(self, raw_value: Any) -> Any
-```
-
-Full field-level cleaning pipeline: call `to_python`, enforce `required`,
-run `validate`. Returns the cleaned Python value, or raises
-`ValidationError`. Called by `BoundField.validate()` on blur and by
-`BaseForm.validate()` on submission.
-
-
 ### `__call__`
 
 ```python
@@ -255,11 +236,11 @@ def __call__(
 ```
 
 Configure this `BoundField` for rendering and return a fully-configured widget. Used when
-composing the BoundForm to yield the field into the widget tree.
+composing the Form to yield the field into the widget tree.
 
 Any keyword argument supplied here takes precedence over the corresponding
 `Field` declaration. `widget_kwargs` are merged with (and override)
-`field.widget_kwargs`.
+`BoundField.widget_kwargs`.
 
 Raises `FormError` if this field has already been yielded in the current
 layout (duplicate-render protection).
@@ -272,24 +253,7 @@ yield self.form.role(label_style="beside")      # override label style
 yield self.form.notes(help_style="tooltip")     # override help style
 ```
 
-Returns `self` so that the yield expression is the `BoundField` widget
-itself — Textual mounts it as a `Vertical` container.
-
-### `to_python`
-
-```python
-def to_python(self, value: Any) -> Any
-```
-
-Convert a raw widget string value to the appropriate Python type.
-Raises `ValidationError` if conversion fails (e.g. non-integer input for
-`IntegerField`).
-
-### `to_widget`
-
-```python
-def to_widget(self, value: Any) -> Any
-```
+Returns the `BoundField`'s widget for inclusion in its FieldLayout object.
 
 Convert a Python value to the representation expected by the widget
 (typically a string).
@@ -300,13 +264,9 @@ Convert a Python value to the representation expected by the widget
 def validate(self) -> bool
 ```
 
-Run `field.clean(self.value)`. On success, clears `errors`, sets
-`has_error = False`. On `ValidationError`, populates `errors` and
-`error_message`, sets `has_error = True`.
-
-Returns `True` if valid, `False` otherwise. Called automatically on blur
-via the `on_blur` watcher; also called for every field by
-`BaseForm.validate()` on submission.
+Calls `widget.validate()`, returning True if the field validates. Called
+automatically change or blur via the `on_change` and `on_blur` watchers; also
+called for every field by `BaseForm.validate()` on submission.
 
 ### `compose` (Textual override)
 
@@ -365,7 +325,7 @@ Form(
 |-----------|-------------|
 | `data` | Optional initial data dict `{field_name: value}`. Values are applied as each `BoundField`'s initial `value`. |
 | `layout_class` | Overrides `Form.layout_class` for this instance only. |
-| `label_style` | Overrides `Form.;abel_style` for this instance only. |
+| `label_style` | Overrides `Form.label_style` for this instance only. |
 
 ### Field access
 
@@ -383,13 +343,21 @@ directly.
 
 ### Methods
 
-#### `bound_field`
+#### `clean`
 
 ```python
-def bound_field(self, id: str | None = None) -> FormLayout
+def clean(self, raw_value: Any) -> Any
 ```
 
-Instantiate and return the layout for this Form instance. Uses `self._layout_class`
+Full form-level cleaning pipeline: run `validate` to validate each field.
+Raise `ValidationError` after validation is complete if one or more fields
+fail to validate. If validate returns True, follow that by form-specific checks
+which can examine all the fields' data. Called only on submission.
+
+
+#### `build_layout`
+
+Instantiate and return the FormLayout for this Form instance. Uses `self._layout_class`
 (resolved from constructor arg → class attr → `DefaultFormLayout`).
 The returned `FormLayout` is ready to mount in a Textual `compose()`.
 
@@ -401,7 +369,7 @@ def is_valid(self) -> bool   # alias
 ```
 
 Call `bound_field.validate()` for every field. Return `True` only if all
-fields are valid. Populates `BoundField.errors` for any failing fields.
+fields are valid, otherwise False. Populates `BoundField.errors` for any failing fields.
 
 #### `get_data`
 
@@ -430,7 +398,7 @@ def embed(
     cls,
     prefix: str,
     title: str = "",
-) -> ComposedForm
+) -> EmbeddedForm
 ```
 
 Return an `EmbeddedForm` marker for use inside another form class body.
@@ -440,8 +408,8 @@ at class-definition time.
 
 ```python
 class OrderForm(Form):
-    billing  = AddressForm.compose(prefix="billing")
-    shipping = AddressForm.compose(prefix="shipping")
+    billing  = AddressForm.embed(prefix="billing")
+    shipping = AddressForm.embed(prefix="shipping")
     notes    = TextField(label="Notes")
 ```
 
