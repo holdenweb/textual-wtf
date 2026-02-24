@@ -1,8 +1,6 @@
 # textual-wtf — Python API Reference
 
-> **Status:** Design specification. Describes the target API synthesised from
-> the BoundField-as-widget (reactive) architecture, callable BoundFields, and
-> the `FormLayout`/`compose_form()` rendering model.
+> **Status:** Design specification. Describes the target API. Still under development.
 
 ---
 
@@ -18,6 +16,18 @@
 8. [Constants and type aliases](#8-constants-and-type-aliases)
 
 ---
+
+## 0. Introduction
+
+This document describes the design of a forms suystem for Textual. The user begins
+by declaring a Form subclass, in which Field and embedded Form instances are assigned to class
+variables. The FormMetaclass extracts these Field definitions, saving them in the `fields`
+class variable.
+
+When a Form instance is created, each of the fields is bound to the new
+instance as a BoundField. Thus the Field holds the configuration data for a
+field, which is the same for all instances of that Form, while the BoundField
+holds the field data for a specific Form instance.
 
 ## 1. `Field`
 
@@ -50,15 +60,10 @@ Field(
 | Parameter | Description |
 |-----------|-------------|
 | `label` | Human-readable label shown in the UI. |
-| `initial` | Default value used when no data is supplied. Read-only once set. |
-| `required` | Whether the field must be non-empty on submission. Enforced at field-validation time, not widget-validation time. |
-| `disabled` | Initial disabled state. Copied to `BoundField.disabled` on binding; independently mutable per instance thereafter. |
-| `validators` | Field-level validators run on blur and submission. Merged with any validators supplied to `BoundField.__call__()` at render time. |
-| `help_text` | Optional guidance. Displayed below the widget or as a hover tooltip depending on `help_style`. |
 | `label_style` | How the label is presented. One of `"above"`, `"beside"`, `"placeholder"`. See [Constants](#8-constants-and-type-aliases). |
 | `help_style` | How help text is presented. One of `"below"`, `"tooltip"`. |
 | `widget_class` | The Textual widget class to instantiate for this field. If `None`, the subclass default is used. |
-| `**widget_kwargs` | Additional keyword arguments forwarded to the widget constructor. Merged with (and overridden by) any kwargs passed to `BoundField.__call__()` at render time. |
+| `**b_field_kwargs` | Additional keyword arguments forwarded to the BoundField constructor. Those not used by the BoundField are later merged with (and overridden by) any kwargs passed to `BoundField.__call__()` at render time. |
 
 ### Methods
 
@@ -73,47 +78,9 @@ def bind(
 ) -> BoundField
 ```
 
-Create a `BoundField` for this `Field` within a specific form instance.
-Called by `BaseForm.__init__()`; not normally called directly.
-
-#### `to_python`
-
-```python
-def to_python(self, value: Any) -> Any
-```
-
-Convert a raw widget string value to the appropriate Python type.
-Raises `ValidationError` if conversion fails (e.g. non-integer input for
-`IntegerField`).
-
-#### `to_widget`
-
-```python
-def to_widget(self, value: Any) -> Any
-```
-
-Convert a Python value to the representation expected by the widget
-(typically a string).
-
-#### `validate`
-
-```python
-def validate(self, value: Any) -> None
-```
-
-Run all field-level validators against `value` (already converted via
-`to_python`). Raises `ValidationError` on the first failure.
-
-#### `clean`
-
-```python
-def clean(self, raw_value: Any) -> Any
-```
-
-Full field-level cleaning pipeline: call `to_python`, enforce `required`,
-run `validate`. Returns the cleaned Python value, or raises
-`ValidationError`. Called by `BoundField.validate()` on blur and by
-`BaseForm.validate()` on submission.
+Returns a `BoundField` for this `Field` within a specific form instance.
+Called by `BaseForm.__init__()` and collected in the BoundField's field
+dictionary under the field's name; not normally called directly.
 
 ---
 
@@ -197,7 +164,8 @@ Mutable runtime state for one field within one form instance. Also a
 Textual `Vertical` container widget: when mounted, it composes its own
 label, inner input widget, optional help text, and error display.
 
-Created by `Field.bind()` during `BaseForm.__init__()`. Not instantiated
+Created by `Field.bind()` during `BaseForm.__init__()`, which stores
+them in the Form instances bound_fields attribute . Not instantiated
 directly.
 
 ### Constructor
@@ -222,14 +190,14 @@ automatically.
 |-----------|------|-------------|
 | `value` | `Any` | Current Python value. Setting it updates the inner widget; the inner widget's `watch_value` watcher keeps this in sync when the user types. |
 | `has_error` | `bool` | `True` when the field has at least one validation error. |
-| `error_message` | `str` | The first (or joined) error message. Displayed in the error label inside the widget tree. |
+| `error_messages` | list[`str`] | Error messages accumulated during validation. Displayed in the error label inside the widget tree. |
 
-### Properties (delegated from `Field`, read-only)
+### Properties (some delegated to `Field`, read-only)
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `label` | `str` | Human-readable label. |
-| `initial` | `Any` | Default value from the `Field` declaration. |
+| `default` | `Any` | Default value from the `Field` declaration. |
 | `required` | `bool` | Whether the field is required. |
 | `help_text` | `str` | Help guidance string. |
 | `label_style` | `LabelStyle` | How the label is presented; overridable per-call via `__call__`. |
@@ -247,6 +215,31 @@ automatically.
 | `errors` | `list[str]` | Current validation error messages. Populated by `validate()`; cleared before each validation pass. |
 | `is_dirty` | `bool` | `True` once the user has interacted with the field (changed its value from `initial`). |
 
+
+Convert a Python value to the representation expected by the widget
+(typically a string).
+
+#### `validate`
+
+```python
+def validate(self, value: Any) -> None
+```
+
+Run all field-level validators against `value` (already converted via
+`to_python`). Raises `ValidationError` on the first failure.
+
+#### `clean`
+
+```python
+def clean(self, raw_value: Any) -> Any
+```
+
+Full field-level cleaning pipeline: call `to_python`, enforce `required`,
+run `validate`. Returns the cleaned Python value, or raises
+`ValidationError`. Called by `BoundField.validate()` on blur and by
+`BaseForm.validate()` on submission.
+
+
 ### `__call__`
 
 ```python
@@ -261,8 +254,8 @@ def __call__(
 ) -> BoundField
 ```
 
-Configure this `BoundField` for rendering and return `self`. Called inside
-`FormLayout.compose_form()` to yield the field into the widget tree.
+Configure this `BoundField` for rendering and return a fully-configured widget. Used when
+composing the BoundForm to yield the field into the widget tree.
 
 Any keyword argument supplied here takes precedence over the corresponding
 `Field` declaration. `widget_kwargs` are merged with (and override)
@@ -281,6 +274,25 @@ yield self.form.notes(help_style="tooltip")     # override help style
 
 Returns `self` so that the yield expression is the `BoundField` widget
 itself — Textual mounts it as a `Vertical` container.
+
+### `to_python`
+
+```python
+def to_python(self, value: Any) -> Any
+```
+
+Convert a raw widget string value to the appropriate Python type.
+Raises `ValidationError` if conversion fails (e.g. non-integer input for
+`IntegerField`).
+
+### `to_widget`
+
+```python
+def to_widget(self, value: Any) -> Any
+```
+
+Convert a Python value to the representation expected by the widget
+(typically a string).
 
 ### `validate`
 
@@ -302,7 +314,7 @@ via the `on_blur` watcher; also called for every field by
 def compose(self) -> ComposeResult
 ```
 
-Builds the widget subtree from the current `label_style` and `help_style`:
+Yields a FieldLayout object that contains the BoundField's widget subtree from the current `label_style` and `help_style`:
 
 - `"above"`: `Label` stacked above the inner widget.
 - `"beside"`: `Label` and inner widget in a `Horizontal`.
@@ -312,7 +324,7 @@ Builds the widget subtree from the current `label_style` and `help_style`:
 Help text: visible `Static` below the widget (`"below"`) or assigned to
 `widget.tooltip` (`"tooltip"`).
 
-Error display: a `Label` with reactive binding to `error_message`, hidden
+Error display: a `Label` with reactive binding to `error_messages`, hidden
 when `has_error` is `False`.
 
 Not normally overridden; control presentation via `label_style` and
@@ -345,6 +357,7 @@ Form(
     data: dict[str, Any] | None = None,
     *,
     layout_class: type[FormLayout] | None = None,
+    label_style: str | None = None,
 )
 ```
 
@@ -352,6 +365,7 @@ Form(
 |-----------|-------------|
 | `data` | Optional initial data dict `{field_name: value}`. Values are applied as each `BoundField`'s initial `value`. |
 | `layout_class` | Overrides `Form.layout_class` for this instance only. |
+| `label_style` | Overrides `Form.;abel_style` for this instance only. |
 
 ### Field access
 
@@ -362,20 +376,20 @@ form.bound_fields       # dict[str, BoundField], ordered by declaration
 form.fields             # alias for bound_fields
 ```
 
-For composed forms, unqualified names (e.g. `form.street`) resolve when
+For embedded forms, unqualified names (e.g. `form.street`) resolve when
 unambiguous across all prefixed fields; raise `AmbiguousFieldError`
 otherwise. Qualified names (e.g. `form.billing_street`) always resolve
 directly.
 
 ### Methods
 
-#### `render`
+#### `bound_field`
 
 ```python
-def render(self, id: str | None = None) -> FormLayout
+def bound_field(self, id: str | None = None) -> FormLayout
 ```
 
-Instantiate and return the layout. Uses `self._layout_class`
+Instantiate and return the layout for this Form instance. Uses `self._layout_class`
 (resolved from constructor arg → class attr → `DefaultFormLayout`).
 The returned `FormLayout` is ready to mount in a Textual `compose()`.
 
@@ -408,18 +422,18 @@ in the form are ignored.
 
 ### Class method
 
-#### `compose`
+#### `embed`
 
 ```python
 @classmethod
-def compose(
+def embed(
     cls,
     prefix: str,
     title: str = "",
 ) -> ComposedForm
 ```
 
-Return a `ComposedForm` marker for use inside another form class body.
+Return an `EmbeddedForm` marker for use inside another form class body.
 `FormMetaclass` expands it in place, prefixing all field names with
 `f"{prefix}_"`. Name collisions with existing fields raise `FormError`
 at class-definition time.
@@ -481,15 +495,15 @@ FormLayout(
 
 ### Override in subclasses
 
-#### `compose_form`
+#### `compose`
 
 ```python
-def compose_form(self) -> ComposeResult
+def compose(self) -> ComposeResult
 ```
 
-Define the form's visual structure. Called by `compose()`. Yield
-`BoundField` widgets via the callable interface, plus any other Textual
-widgets (buttons, labels, containers) needed for the layout.
+Define the form's visual structure. Yield `BoundField` widgets via the
+callable interface, plus any other Textual widgets (buttons, labels,
+containers) needed for the layout.
 
 ```python
 class TwoColumnLayout(FormLayout):
@@ -507,15 +521,6 @@ class TwoColumnLayout(FormLayout):
 Each `BoundField` may only be yielded once per layout; a second yield
 raises `FormError`.
 
-### Provided (do not override)
-
-#### `compose`
-
-```python
-def compose(self) -> ComposeResult
-```
-
-Calls `compose_form()`. Do not override; override `compose_form()` instead.
 
 ### Attributes
 
@@ -527,14 +532,14 @@ Calls `compose_form()`. Do not override; override `compose_form()` instead.
 
 The base class responds to:
 
-- `Button` press with `id="submit"` → posts `Form.Submitted`.
-- `Button` press with `id="cancel"` → posts `Form.Cancelled`.
-- `Key("enter")` → triggers submit (calls `form.validate()` first; only
+- `Button` press with `id="submit"` → posts `Form.Submitted` (calls `form.validate()` first; only
   posts if valid).
+- `Button` press with `id="cancel"` → posts `Form.Cancelled`.
+- `Key("enter")` → triggers submit.
 - `Key("escape")` → triggers cancel.
 
 `DefaultFormLayout` also adds a form title (if `Form` has a `title`
-attribute) and the Submit/Cancel buttons automatically, so `compose_form()`
+attribute) and the Submit/Cancel buttons automatically, so `compose()`
 in `DefaultFormLayout` subclasses need not yield buttons explicitly.
 
 ### `DefaultFormLayout`
@@ -559,9 +564,10 @@ Not normally subclassed directly; for custom layouts, subclass `FormLayout`.
 class Validator(ABC)
 ```
 
-Abstract base for class-based validators. Alternatively, any callable with
-signature `(value: Any) -> None` that raises `ValidationError` on failure
-may be used directly.
+Validators are subclasses of textual.validation.Validator, which thereby
+inherit Validator's `success()` and `failure()` methods. Alternatively, any
+callable with signature `(value: Any) -> None` that raises `ValidationError`
+on failure may be used directly.
 
 ### `Validator.validate`
 
@@ -570,8 +576,8 @@ may be used directly.
 def validate(self, value: Any) -> None
 ```
 
-Raise `ValidationError(message)` if `value` is invalid. Return `None` on
-success.
+Return `self.success()` when validation succeeds, otherwise return
+`self.failure(message)` where message explains the problem..
 
 ### Built-in validators
 
@@ -624,3 +630,4 @@ HelpStyle  = Literal["below", "tooltip"]
 | `label_style="above"` | Label above, help text below | Label above, help on hover |
 | `label_style="beside"` | Label left, help text below | Label left, help on hover |
 | `label_style="placeholder"` | Placeholder label, help text below | Placeholder label, help on hover |
+
