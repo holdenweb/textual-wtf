@@ -8,7 +8,8 @@ Demonstrates:
 Run with: python examples/simple_rendered_form.py
 """
 
-from textual.app import App, ComposeResult, on
+from textual.app import ComposeResult, on
+from example_app import ExampleApp
 from textual_wtf import Form, StringField, IntegerField, Required, MinLength
 
 
@@ -31,14 +32,10 @@ class UserForm(Form):
     )
 
 
-class FormApp(App):
+class FormApp(ExampleApp):
     """Minimal app that displays a form."""
 
     CSS = """
-    Screen {
-        align: center middle;
-    }
-
     FormLayout {
         width: 60;
         max-height: 80%;

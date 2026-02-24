@@ -4,8 +4,9 @@ Example demonstrating different FieldContainer layout options.
 Run with: python examples/layout_options_demo.py
 """
 
-from textual.app import App, ComposeResult, on
+from textual.app import ComposeResult, on
 from textual.containers import Vertical
+from example_app import ExampleApp
 from textual.widgets import Static
 from textual_wtf import Form, StringField, IntegerField, Required, MinLength
 
@@ -34,7 +35,7 @@ class PlaceholderForm(Form):
     age = IntegerField(label="Age", min_value=0, max_value=130)
 
 
-class LayoutDemoApp(App):
+class LayoutDemoApp(ExampleApp):
     """App showing different layout options side-by-side."""
 
     CSS = """

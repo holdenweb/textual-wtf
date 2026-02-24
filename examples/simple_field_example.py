@@ -12,8 +12,9 @@ simple_rendered_form.py which uses Form.build_layout().
 Run with: python examples/simple_field_example.py
 """
 
-from textual.app import App, ComposeResult
+from textual.app import ComposeResult
 from textual.containers import Container
+from example_app import ExampleApp
 from textual.widgets import Button
 from textual_wtf import Form, StringField, Required, MinLength
 
@@ -35,14 +36,10 @@ class SimpleForm(Form):
     )
 
 
-class SimpleFormApp(App):
+class SimpleFormApp(ExampleApp):
     """App demonstrating direct BoundField widget usage."""
 
     CSS = """
-    Screen {
-        align: center middle;
-    }
-
     #form-container {
         width: 60;
         height: auto;

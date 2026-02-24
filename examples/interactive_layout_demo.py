@@ -6,8 +6,9 @@ Use radio buttons to switch between different layout styles in real-time.
 Run with: python examples/interactive_layout_demo.py
 """
 
-from textual.app import App, ComposeResult
+from textual.app import ComposeResult
 from textual.containers import Vertical, Container, ScrollableContainer
+from example_app import ExampleApp
 from textual.widgets import Static, RadioButton, RadioSet
 from textual_wtf import Form, StringField, IntegerField, Required, MinLength
 
@@ -28,7 +29,7 @@ class DemoForm(Form):
     )
 
 
-class InteractiveDemoApp(App):
+class InteractiveDemoApp(ExampleApp):
     """Interactive app for exploring layout options."""
 
     CSS = """
@@ -181,6 +182,7 @@ class InteractiveDemoApp(App):
 
     def on_mount(self) -> None:
         """Set up initial state."""
+        super().on_mount()
         self._label_style = "placeholder"
         self._help_style = "below"
         # Set initial radio selections to match defaults

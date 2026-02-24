@@ -9,8 +9,9 @@ This combines:
 Run with: python examples/form_example_0_6_0a3.py
 """
 
-from textual.app import App, ComposeResult
+from textual.app import ComposeResult
 from textual.containers import Container
+from example_app import ExampleApp
 from textual.widgets import Button
 from textual_wtf import Form, StringField, IntegerField, Required, MinLength
 
@@ -34,14 +35,10 @@ class UserForm(Form):
     )
 
 
-class FormApp(App):
+class FormApp(ExampleApp):
     """App demonstrating the new Form/BoundField architecture."""
 
     CSS = """
-    Screen {
-        align: center middle;
-    }
-
     #form-container {
         width: 60;
         border: solid $primary;
