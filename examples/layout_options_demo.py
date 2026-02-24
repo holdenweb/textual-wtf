@@ -12,11 +12,7 @@ from textual_wtf import Form, StringField, IntegerField, Required, MinLength
 
 class VerticalForm(Form):
     """Default vertical layout with labels above fields."""
-    field_container_defaults = {
-        'layout': 'vertical',
-        'placeholder': False,
-        'help_style': 'below',
-    }
+    label_style = "above"
 
     name = StringField(label="Name", validators=[Required(), MinLength(3)])
     age = IntegerField(label="Age", min_value=0, max_value=130)
@@ -24,11 +20,7 @@ class VerticalForm(Form):
 
 class HorizontalForm(Form):
     """Horizontal layout with labels left of fields."""
-    field_container_defaults = {
-        'layout': 'horizontal',
-        'placeholder': False,
-        'help_style': 'below',
-    }
+    label_style = "beside"
 
     name = StringField(label="Name", validators=[Required(), MinLength(3)])
     age = IntegerField(label="Age", min_value=0, max_value=130)
@@ -36,11 +28,7 @@ class HorizontalForm(Form):
 
 class PlaceholderForm(Form):
     """Ultra-compact with placeholder labels."""
-    field_container_defaults = {
-        'layout': 'vertical',
-        'placeholder': True,
-        'help_style': 'below',
-    }
+    label_style = "placeholder"
 
     name = StringField(label="Name", validators=[Required(), MinLength(3)])
     age = IntegerField(label="Age", min_value=0, max_value=130)
@@ -131,7 +119,7 @@ class LayoutDemoApp(App):
             border-left: blank red;
             border-right: blank red;
         }
-
+    }
     """
 
     def compose(self) -> ComposeResult:
@@ -142,23 +130,23 @@ class LayoutDemoApp(App):
             yield Static("Vertical (Default)", classes="demo-title")
             yield Static("Labels above fields")
             form1 = VerticalForm()
-            yield form1.render()
+            yield form1.build_layout()
 
         # Horizontal layout
         with Vertical(classes="demo-section"):
             yield Static("Horizontal", classes="demo-title")
             yield Static("Labels left of fields")
             form2 = HorizontalForm()
-            yield form2.render()
+            yield form2.build_layout()
 
         # Placeholder layout
         with Vertical(classes="demo-section"):
             yield Static("Placeholder", classes="demo-title")
             yield Static("Labels as placeholders")
             form3 = PlaceholderForm()
-            yield form3.render()
+            yield form3.build_layout()
 
-    @on(From.Submitted)
+    @on(Form.Submitted)
     def on_submitted(self, event: Form.Submitted) -> None:
         """Handle form submission."""
         if event.form.is_valid():

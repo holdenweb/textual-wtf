@@ -73,7 +73,11 @@ class FormApp(App):
                 data = self.form.get_data()
                 self.notify(f"Form valid! Data: {data}", severity="information")
             else:
-                errors = self.form.errors
+                errors = {
+                    name: bf.errors
+                    for name, bf in self.form.bound_fields.items()
+                    if bf.errors
+                }
                 self.notify(f"Errors: {errors}", severity="error")
 
 

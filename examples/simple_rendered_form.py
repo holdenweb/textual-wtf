@@ -47,7 +47,7 @@ class FormApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = UserForm()
-        yield self.form.render()
+        yield self.form.build_layout()
 
     @on(Form.Submitted)
     def on_submitted(self, event: Form.Submitted) -> None:

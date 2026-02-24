@@ -15,12 +15,6 @@ from textual_wtf import Form, StringField, IntegerField, Required, MinLength
 class DemoForm(Form):
     """Demo form with configurable layout."""
 
-    field_container_defaults = {
-        'layout': 'vertical',
-        'placeholder': False,
-        'help_style': 'below',
-    }
-
     name = StringField(
         label="Name",
         validators=[Required(), MinLength(3)],
@@ -178,8 +172,8 @@ class InteractiveDemoApp(App):
 
                 # Form container (will be replaced when options change)
                 with Container(id="form-container"):
-                    self.current_form = DemoForm()
-                    yield self.current_form.render()
+                    self.current_form = DemoForm(label_style="placeholder")
+                    yield self.current_form.build_layout()
 
                 # Add some padding at bottom for scrolling
                 yield Static("")
@@ -187,6 +181,8 @@ class InteractiveDemoApp(App):
 
     def on_mount(self) -> None:
         """Set up initial state."""
+        self._label_style = "placeholder"
+        self._help_style = "below"
         # Set initial radio selections to match defaults
         self.query_one("#label-placeholder", RadioButton).value = True
         self.query_one("#help-below", RadioButton).value = True
@@ -204,30 +200,18 @@ class InteractiveDemoApp(App):
         if not label_pressed or not help_pressed:
             return  # Not fully initialized yet
 
-        # Map radio button IDs to layout options
+        # Map radio button IDs to label_style values
         label_id = label_pressed.id
         help_id = help_pressed.id
 
-        # Determine layout and placeholder based on label style
         if label_id == "label-above":
-            layout = "vertical"
-            placeholder = False
+            self._label_style = "above"
         elif label_id == "label-alongside":
-            layout = "horizontal"
-            placeholder = False
+            self._label_style = "beside"
         else:  # label-placeholder
-            layout = "vertical"
-            placeholder = True
+            self._label_style = "placeholder"
 
-        # Determine help style
-        help_style = "below" if help_id == "help-below" else "tooltip"
-
-        # Update form class defaults
-        DemoForm.field_container_defaults = {
-            'layout': layout,
-            'placeholder': placeholder,
-            'help_style': help_style,
-        }
+        self._help_style = "below" if help_id == "help-below" else "tooltip"
 
         # Rebuild form with new options
         self.rebuild_form()
@@ -241,18 +225,10 @@ class InteractiveDemoApp(App):
         form_container = self.query_one("#form-container")
         form_container.remove_children()
 
-        # Create new form with preserved data and apply tooltips if needed
-        self.current_form = DemoForm(data=old_data)
-        layout = self.current_form.render()
-
-        # If help_style is tooltip, add tooltips to field containers
-        if self.current_form.field_container_defaults.get('help_style') == 'tooltip':
-            for bound_field in self.current_form.bound_fields.values():
-                if bound_field.field.help_text and hasattr(bound_field, "widghet") and bound_field.widget:
-                    # Set tooltip on the widget
-                    bound_field.widget.tooltip = bound_field.field.help_text
-
-        form_container.mount(layout)
+        # help_style is a class-level attribute; set it before constructing
+        DemoForm.help_style = self._help_style
+        self.current_form = DemoForm(data=old_data, label_style=self._label_style)
+        form_container.mount(self.current_form.build_layout())
 
     def on_form_submitted(self, event: Form.Submitted) -> None:
         """Handle form submission."""
