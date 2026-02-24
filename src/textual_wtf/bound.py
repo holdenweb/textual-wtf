@@ -38,6 +38,9 @@ class BoundField(Container):
         height: auto;
         margin-bottom: 1;
     }
+    BoundField .field-beside {
+        height: auto;
+    }
     BoundField .field-label {
         margin-bottom: 0;
     }
