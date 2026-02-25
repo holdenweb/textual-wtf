@@ -13,7 +13,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from example_app import ExampleApp
 from textual.widgets import Button
-from textual_wtf import Form, StringField, IntegerField, Required, MinLength
+from textual_wtf import Form, StringField, IntegerField
 
 
 class UserForm(Form):
@@ -22,15 +22,14 @@ class UserForm(Form):
     name = StringField(
         label="Name",
         required=True,
-        validators=[Required(), MinLength(3)],
+        min_length=3,
         placeholder="Enter your name"
     )
 
     age = IntegerField(
         label="Age",
-        required=False,
-        min_value=0,
-        max_value=130,
+        minimum=0,
+        maximum=130,
         placeholder="Enter your age"
     )
 

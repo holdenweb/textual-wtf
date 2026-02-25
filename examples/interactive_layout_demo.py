@@ -10,7 +10,7 @@ from textual.app import ComposeResult, on
 from textual.containers import Vertical, Container, ScrollableContainer
 from example_app import ExampleApp
 from textual.widgets import Static, RadioButton, RadioSet
-from textual_wtf import Form, StringField, IntegerField, Required, MinLength
+from textual_wtf import Form, StringField, IntegerField
 
 
 class DemoForm(Form):
@@ -18,13 +18,14 @@ class DemoForm(Form):
 
     name = StringField(
         label="Name",
-        validators=[Required(), MinLength(3)],
+        required=True,
+        min_length=3,
         help_text="Enter your full name"
     )
     age = IntegerField(
         label="Age",
-        min_value=0,
-        max_value=130,
+        minimum=0,
+        maximum=130,
         help_text="Enter your age in years"
     )
 

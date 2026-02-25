@@ -16,7 +16,7 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from example_app import ExampleApp
 from textual.widgets import Button
-from textual_wtf import Form, StringField, Required, MinLength
+from textual_wtf import Form, StringField
 
 
 class SimpleForm(Form):
@@ -25,13 +25,12 @@ class SimpleForm(Form):
     name = StringField(
         label="Name",
         required=True,
-        validators=[Required(), MinLength(3)],
+        min_length=3,
         help_text="Enter your full name",
     )
     email = StringField(
         label="Email",
         required=True,
-        validators=[Required()],
         help_text="Enter your email address",
     )
 

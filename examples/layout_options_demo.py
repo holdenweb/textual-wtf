@@ -8,31 +8,31 @@ from textual.app import ComposeResult, on
 from textual.containers import Vertical
 from example_app import ExampleApp
 from textual.widgets import Static
-from textual_wtf import Form, StringField, IntegerField, Required, MinLength
+from textual_wtf import Form, StringField, IntegerField
 
 
 class VerticalForm(Form):
     """Default vertical layout with labels above fields."""
     label_style = "above"
 
-    name = StringField(label="Name", validators=[Required(), MinLength(3)])
-    age = IntegerField(label="Age", min_value=0, max_value=130)
+    name = StringField(label="Name", required=True, min_length=3)
+    age = IntegerField(label="Age", minimum=0, maximum=130)
 
 
 class HorizontalForm(Form):
     """Horizontal layout with labels left of fields."""
     label_style = "beside"
 
-    name = StringField(label="Name", validators=[Required(), MinLength(3)])
-    age = IntegerField(label="Age", min_value=0, max_value=130)
+    name = StringField(label="Name", required=True, min_length=3)
+    age = IntegerField(label="Age", minimum=0, maximum=130)
 
 
 class PlaceholderForm(Form):
     """Ultra-compact with placeholder labels."""
     label_style = "placeholder"
 
-    name = StringField(label="Name", validators=[Required(), MinLength(3)])
-    age = IntegerField(label="Age", min_value=0, max_value=130)
+    name = StringField(label="Name", required=True, min_length=3)
+    age = IntegerField(label="Age", minimum=0, maximum=130)
 
 
 class LayoutDemoApp(ExampleApp):
