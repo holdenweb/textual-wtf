@@ -290,6 +290,121 @@ class TestBoundFieldCall:
         assert "classes" in form.name._widget_kwargs
 
 
+# ── _validate_for — event-scoped validation ─────────────────────
+
+
+class TestValidateFor:
+    """BoundField._validate_for(event) only fires validators whose
+    validate_on includes *event*.  validate() always runs everything."""
+
+    def test_change_does_not_trigger_required(self):
+        """Required field with empty value: change should not flag it as an error."""
+
+        class F(Form):
+            name = StringField("Name", required=True)
+
+        form = F()
+        form.name.value = ""
+        assert form.name._validate_for("change") is True
+        assert form.name.has_error is False
+
+    def test_blur_triggers_required(self):
+        """Required field with empty value: blur should fail."""
+
+        class F(Form):
+            name = StringField("Name", required=True)
+
+        form = F()
+        form.name.value = ""
+        assert form.name._validate_for("blur") is False
+        assert form.name.has_error is True
+        assert any("required" in e.lower() for e in form.name.errors)
+
+    def test_change_triggers_max_length(self):
+        """MaxLength fires on change, so an over-length value is caught immediately."""
+
+        class F(Form):
+            tag = StringField("Tag", max_length=5)
+
+        form = F(data={"tag": "toolongstring"})
+        assert form.tag._validate_for("change") is False
+        assert form.tag.has_error is True
+
+    def test_change_does_not_trigger_min_length(self):
+        """MinLength does NOT fire on change — short values are tolerated while typing."""
+
+        class F(Form):
+            name = StringField("Name", min_length=5)
+
+        form = F(data={"name": "ab"})
+        assert form.name._validate_for("change") is True
+        assert form.name.has_error is False
+
+    def test_blur_triggers_min_length(self):
+        """MinLength fires on blur — too-short value is caught when leaving the field."""
+
+        class F(Form):
+            name = StringField("Name", min_length=5)
+
+        form = F(data={"name": "ab"})
+        assert form.name._validate_for("blur") is False
+        assert form.name.has_error is True
+        assert any("at least 5" in e for e in form.name.errors)
+
+    def test_validate_runs_all_validators_regardless_of_validate_on(self):
+        """validate() (submit path) runs every validator regardless of validate_on."""
+
+        class F(Form):
+            name = StringField("Name", required=True, min_length=5)
+
+        form = F(data={"name": "ab"})
+        # _validate_for("change") would pass (min_length not in change validators)
+        assert form.name._validate_for("change") is True
+        # validate() must still catch the min_length violation
+        assert form.name.validate() is False
+        assert any("at least 5" in e for e in form.name.errors)
+
+    def test_validate_for_clears_errors_when_valid(self):
+        """_validate_for clears has_error and errors when the value is now valid."""
+
+        class F(Form):
+            tag = StringField("Tag", max_length=5)
+
+        form = F(data={"tag": "toolong"})
+        form.tag._validate_for("change")
+        assert form.tag.has_error is True
+
+        form.tag.value = "ok"
+        assert form.tag._validate_for("change") is True
+        assert form.tag.has_error is False
+        assert form.tag.errors == []
+
+    def test_empty_optional_field_passes_blur(self):
+        """An optional empty field should always pass _validate_for("blur")."""
+
+        class F(Form):
+            tag = StringField("Tag", min_length=3)
+
+        form = F()
+        assert form.tag._validate_for("blur") is True
+        assert form.tag.has_error is False
+
+    def test_blur_collects_errors_from_multiple_validators(self):
+        """Both MinLength and a custom callable validator fire on blur."""
+
+        def no_digits(v):
+            if any(c.isdigit() for c in v):
+                raise ValidationError("No digits allowed")
+
+        class F(Form):
+            code = StringField("Code", min_length=4, validators=[no_digits])
+
+        form = F(data={"code": "ab1"})
+        # blur: min_length fires (too short) AND no_digits fires (has digit)
+        assert form.code._validate_for("blur") is False
+        assert len(form.code.errors) >= 2
+
+
 # ── to_python delegation ───────────────────────────────────────
 
 

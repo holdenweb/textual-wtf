@@ -125,6 +125,65 @@ class TestValidatorBase:
         assert Validator().validate("anything").is_valid
 
 
+class TestValidateOnAttributes:
+    """validate_on class attributes and per-instance overrides."""
+
+    def test_base_validator_fires_on_blur(self):
+        assert "blur" in Validator().validate_on
+
+    def test_base_validator_not_on_change(self):
+        assert "change" not in Validator().validate_on
+
+    def test_max_length_fires_on_change_and_blur(self):
+        v = MaxLength(10)
+        assert "change" in v.validate_on
+        assert "blur" in v.validate_on
+
+    def test_max_value_fires_on_change_and_blur(self):
+        v = MaxValue(10)
+        assert "change" in v.validate_on
+        assert "blur" in v.validate_on
+
+    def test_min_length_fires_on_blur_only(self):
+        v = MinLength(3)
+        assert "blur" in v.validate_on
+        assert "change" not in v.validate_on
+
+    def test_min_value_fires_on_blur_only(self):
+        v = MinValue(3)
+        assert "blur" in v.validate_on
+        assert "change" not in v.validate_on
+
+    def test_required_fires_on_blur_only(self):
+        v = Required()
+        assert "blur" in v.validate_on
+        assert "change" not in v.validate_on
+
+    def test_email_validator_fires_on_blur_only(self):
+        v = EmailValidator()
+        assert "blur" in v.validate_on
+        assert "change" not in v.validate_on
+
+    def test_function_validator_fires_on_blur_only(self):
+        v = FunctionValidator(lambda x: None)
+        assert "blur" in v.validate_on
+        assert "change" not in v.validate_on
+
+    def test_override_validate_on_via_kwarg(self):
+        v = MinLength(3, validate_on=frozenset({"change", "blur"}))
+        assert "change" in v.validate_on
+        assert "blur" in v.validate_on
+
+    def test_override_does_not_mutate_class_attribute(self):
+        """Instance override should shadow the class attribute, not mutate it."""
+        MinLength(3, validate_on=frozenset({"change"}))
+        assert MinLength.validate_on == frozenset({"blur"})
+
+    def test_max_length_class_attribute_unchanged_by_instance(self):
+        MaxLength(5, validate_on=frozenset({"blur"}))
+        assert MaxLength.validate_on == frozenset({"change", "blur"})
+
+
 class TestFunctionValidator:
     def test_success_when_callable_returns_normally(self):
         v = FunctionValidator(lambda val: None)

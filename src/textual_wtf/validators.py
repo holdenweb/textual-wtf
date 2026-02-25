@@ -2,6 +2,20 @@
 
 Validators subclass textual.validation.Validator, inheriting
 ``success()`` and ``failure()`` methods.
+
+Each validator carries a ``validate_on`` frozenset that controls which
+*interactive* events trigger it automatically.  The submit path
+(``BoundField.validate()``) always runs every validator regardless.
+
+Default event assignments:
+
+* ``{"blur"}``   — Required, MinLength, MinValue, EmailValidator,
+                    FunctionValidator (fire when the user leaves the field)
+* ``{"change", "blur"}`` — MaxLength, MaxValue
+                    (fire immediately so the user can see they've gone too far)
+
+Override per-class by setting ``validate_on`` as a class attribute, or
+per-instance by passing ``validate_on=`` at construction time.
 """
 
 from __future__ import annotations
@@ -16,9 +30,24 @@ from .exceptions import ValidationError
 
 
 class Validator(TextualValidator):
-    """Base class for textual-wtf validators."""
+    """Base class for textual-wtf validators.
 
-    def validate(self, value: str) -> ValidationResult:
+    Fires on ``{"blur"}`` by default.
+    """
+
+    validate_on: frozenset[str] = frozenset({"blur"})
+
+    def __init__(
+        self,
+        failure_description: str | None = None,
+        *,
+        validate_on: frozenset[str] | None = None,
+    ) -> None:
+        super().__init__(failure_description)
+        if validate_on is not None:
+            self.validate_on = frozenset(validate_on)
+
+    def validate(self, value: Any) -> ValidationResult:
         return self.success()
 
 
@@ -38,8 +67,13 @@ class FunctionValidator(Validator):
         name = StringField("Name", validators=[no_spaces])
     """
 
-    def __init__(self, fn: Callable[[Any], None]) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        fn: Callable[[Any], None],
+        *,
+        validate_on: frozenset[str] | None = None,
+    ) -> None:
+        super().__init__(validate_on=validate_on)
         self._fn = fn
 
     def validate(self, value: Any) -> ValidationResult:
@@ -53,7 +87,7 @@ class FunctionValidator(Validator):
 class Required(Validator):
     """Validates that a value is not None, empty string, or empty sequence."""
 
-    def validate(self, value: str) -> ValidationResult:
+    def validate(self, value: Any) -> ValidationResult:
         if value is None:
             return self.failure("This field is required.")
         if isinstance(value, str) and value.strip() == "":
@@ -66,11 +100,11 @@ class Required(Validator):
 class MinLength(Validator):
     """Validates that len(value) >= n."""
 
-    def __init__(self, n: int) -> None:
-        super().__init__()
+    def __init__(self, n: int, *, validate_on: frozenset[str] | None = None) -> None:
+        super().__init__(validate_on=validate_on)
         self.n = n
 
-    def validate(self, value: str) -> ValidationResult:
+    def validate(self, value: Any) -> ValidationResult:
         if value is not None and len(value) < self.n:
             return self.failure(
                 f"Ensure this value has at least {self.n} characters "
@@ -80,13 +114,19 @@ class MinLength(Validator):
 
 
 class MaxLength(Validator):
-    """Validates that len(value) <= n."""
+    """Validates that len(value) <= n.
 
-    def __init__(self, n: int) -> None:
-        super().__init__()
+    Fires on ``{"change", "blur"}`` by default so the limit is enforced
+    immediately as the user types.
+    """
+
+    validate_on: frozenset[str] = frozenset({"change", "blur"})
+
+    def __init__(self, n: int, *, validate_on: frozenset[str] | None = None) -> None:
+        super().__init__(validate_on=validate_on)
         self.n = n
 
-    def validate(self, value: str) -> ValidationResult:
+    def validate(self, value: Any) -> ValidationResult:
         if value is not None and len(value) > self.n:
             return self.failure(
                 f"Ensure this value has at most {self.n} characters "
@@ -98,11 +138,13 @@ class MaxLength(Validator):
 class MinValue(Validator):
     """Validates that value >= n."""
 
-    def __init__(self, n: int | float) -> None:
-        super().__init__()
+    def __init__(
+        self, n: int | float, *, validate_on: frozenset[str] | None = None
+    ) -> None:
+        super().__init__(validate_on=validate_on)
         self.n = n
 
-    def validate(self, value: str) -> ValidationResult:
+    def validate(self, value: Any) -> ValidationResult:
         if value is not None and value < self.n:
             return self.failure(
                 f"Ensure this value is greater than or equal to {self.n}."
@@ -111,13 +153,21 @@ class MinValue(Validator):
 
 
 class MaxValue(Validator):
-    """Validates that value <= n."""
+    """Validates that value <= n.
 
-    def __init__(self, n: int | float) -> None:
-        super().__init__()
+    Fires on ``{"change", "blur"}`` by default so the limit is enforced
+    immediately as the user types.
+    """
+
+    validate_on: frozenset[str] = frozenset({"change", "blur"})
+
+    def __init__(
+        self, n: int | float, *, validate_on: frozenset[str] | None = None
+    ) -> None:
+        super().__init__(validate_on=validate_on)
         self.n = n
 
-    def validate(self, value: str) -> ValidationResult:
+    def validate(self, value: Any) -> ValidationResult:
         if value is not None and value > self.n:
             return self.failure(
                 f"Ensure this value is less than or equal to {self.n}."
@@ -131,7 +181,7 @@ _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 class EmailValidator(Validator):
     """Validates that a value matches a basic email pattern."""
 
-    def validate(self, value: str) -> ValidationResult:
+    def validate(self, value: Any) -> ValidationResult:
         if value is not None and isinstance(value, str) and value.strip():
             if not _EMAIL_RE.match(value):
                 return self.failure("Enter a valid email address.")

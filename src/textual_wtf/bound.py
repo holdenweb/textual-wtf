@@ -260,6 +260,75 @@ class BoundField(Container):
         self.error_messages = []
         return True
 
+    def _validate_for(self, event: str) -> bool:
+        """Run the validation pipeline for a specific triggering event.
+
+        Only validators whose ``validate_on`` includes *event* are
+        executed.  The ``required`` check is performed only for
+        ``"blur"``.  Returns True if no failures were found.
+
+        The submit path uses ``validate()`` which ignores
+        ``validate_on`` and always runs every validator.
+        """
+        failures: list[str] = []
+
+        # 1. Type coercion
+        try:
+            python_value = self._field.to_python(self.value)
+        except ValidationError as e:
+            failures.append(e.message)
+            self.errors = failures
+            self.has_error = True
+            self.error_messages = failures
+            return False
+
+        self.value = python_value
+
+        # 2. Required check — only when the user has finished with the field
+        if event == "blur" and self._field.required:
+            result = Required().validate(python_value)
+            if not result.is_valid:
+                desc = (
+                    result.failure_descriptions[0]
+                    if result.failure_descriptions
+                    else "This field is required."
+                )
+                failures.append(desc)
+                self.errors = failures
+                self.has_error = True
+                self.error_messages = failures
+                return False
+
+        # 3. Skip further validation if value is empty
+        is_empty = (
+            python_value is None
+            or (isinstance(python_value, str) and python_value.strip() == "")
+        )
+        if is_empty:
+            self.errors = []
+            self.has_error = False
+            self.error_messages = []
+            return True
+
+        # 4. Run validators whose validate_on includes this event
+        for v in self._field.validators:
+            if event in v.validate_on:
+                result = v.validate(python_value)
+                if not result.is_valid:
+                    for desc in result.failure_descriptions:
+                        failures.append(desc)
+
+        if failures:
+            self.errors = failures
+            self.has_error = True
+            self.error_messages = failures
+            return False
+
+        self.errors = []
+        self.has_error = False
+        self.error_messages = []
+        return True
+
     # ── Textual compose ─────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
@@ -380,13 +449,20 @@ class BoundField(Container):
     # ── Event handlers ──────────────────────────────────────────
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        """Sync Input widget value back to BoundField."""
+        """Sync Input widget value back to BoundField and run change validators."""
         if isinstance(self._inner_widget, (Input, FormInput)):
             try:
                 self.value = self._field.to_python(event.value)
             except ValidationError:
                 self.value = event.value
             self.is_dirty = True
+            had_error = self.has_error
+            self._validate_for("change")
+            # If change validators all passed but the field still carried a
+            # stale error (from a previous blur), re-run blur validators so
+            # the error clears as soon as the value becomes valid again.
+            if not self.has_error and had_error:
+                self._validate_for("blur")
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         """Sync Checkbox value back to BoundField."""
@@ -405,8 +481,8 @@ class BoundField(Container):
             self.is_dirty = True
 
     def on_blur(self) -> None:
-        """Validate on blur."""
-        self.validate()
+        """Run blur validators when the field loses focus."""
+        self._validate_for("blur")
 
     # ── Internal helpers ────────────────────────────────────────
 
