@@ -140,7 +140,7 @@ class TestFormMounting:
     async def test_prefilled_values(self):
         async with PrefilledApp().run_test() as pilot:
             assert pilot.app.form.name.value == "Alice"
-            assert pilot.app.form.age.value == "30"
+            assert pilot.app.form.age.value == 30
 
 
 # ── Submission tests ────────────────────────────────────────────
@@ -233,7 +233,7 @@ class TestSetDataMounted:
             pilot.app.form.set_data({"name": "Charlie", "age": "40"})
             await pilot.pause()
             assert pilot.app.form.name.value == "Charlie"
-            assert pilot.app.form.age.value == "40"
+            assert pilot.app.form.age.value == 40
 
 
 # ── Validation error display ───────────────────────────────────

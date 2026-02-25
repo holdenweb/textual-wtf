@@ -87,9 +87,16 @@ class BoundField(Container):
         # Widget kwargs accumulated from Field + __call__
         self._widget_kwargs: dict[str, Any] = dict(field.widget_kwargs)
 
-        # Initial value: data dict takes precedence over field default
+        # Initial value: data dict takes precedence over field default.
+        # Apply to_python() immediately so the programmer always sees a
+        # correctly-typed value; fall back to the raw value on error so
+        # that validate() can still surface the coercion failure later.
         data = data or {}
-        self._initial = data[name] if name in data else field.initial
+        raw = data[name] if name in data else field.initial
+        try:
+            self._initial = field.to_python(raw)
+        except ValidationError:
+            self._initial = raw
 
         # Set reactive values without triggering watchers
         self.set_reactive(BoundField.value, self._initial)
@@ -358,7 +365,10 @@ class BoundField(Container):
     def on_input_changed(self, event: Input.Changed) -> None:
         """Sync Input widget value back to BoundField."""
         if isinstance(self._inner_widget, (Input, FormInput)):
-            self.value = event.value
+            try:
+                self.value = self._field.to_python(event.value)
+            except ValidationError:
+                self.value = event.value
             self.is_dirty = True
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:

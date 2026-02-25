@@ -60,6 +60,7 @@ class InteractiveDemoApp(ExampleApp):
     }
 
     .controls-section {
+        height: auto;
         background: $surface;
         padding: 1 2;
         margin-bottom: 1;

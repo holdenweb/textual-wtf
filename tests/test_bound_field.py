@@ -123,11 +123,16 @@ class TestBoundFieldValidation:
         assert form.name.has_error is False
         assert form.name.errors == []
 
+    def test_integer_coerced_at_init(self):
+        """String '25' from the data dict is coerced to int at init time."""
+        form = ContactForm(data={"name": "Alice", "age": "25"})
+        assert form.age.value == 25  # already an int before validate()
+
     def test_integer_to_python_runs(self):
-        """validate() should coerce '25' to int via to_python."""
+        """validate() passes and the value remains a correctly-typed int."""
         form = ContactForm(data={"name": "Alice", "age": "25"})
         assert form.age.validate() is True
-        assert form.age.value == 25  # coerced to int
+        assert form.age.value == 25
 
     def test_integer_out_of_range(self):
         form = ContactForm(data={"name": "Alice", "age": "200"})

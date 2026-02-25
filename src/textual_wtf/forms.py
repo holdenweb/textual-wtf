@@ -224,7 +224,11 @@ class BaseForm(metaclass=FormMetaclass):
     def set_data(self, data: dict[str, Any]) -> None:
         for name, value in data.items():
             if name in self._bound_fields:
-                self._bound_fields[name].value = value
+                bf = self._bound_fields[name]
+                try:
+                    bf.value = bf._field.to_python(value)
+                except ValidationError:
+                    bf.value = value
 
     # ── Layout ──────────────────────────────────────────────────
 

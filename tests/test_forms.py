@@ -110,7 +110,7 @@ class TestFormInstance:
     def test_initial_data(self):
         form = SimpleForm(data={"name": "Alice", "age": "30"})
         assert form.name.value == "Alice"
-        assert form.age.value == "30"
+        assert form.age.value == 30
 
     def test_missing_data_uses_defaults(self):
         form = SimpleForm(data={"name": "Alice"})
@@ -125,13 +125,13 @@ class TestFormDataAccess:
         form = SimpleForm(data={"name": "Alice", "age": "30"})
         data = form.get_data()
         assert data["name"] == "Alice"
-        assert data["age"] == "30"
+        assert data["age"] == 30
 
     def test_set_data(self):
         form = SimpleForm()
         form.set_data({"name": "Bob", "age": "25"})
         assert form.name.value == "Bob"
-        assert form.age.value == "25"
+        assert form.age.value == 25
 
     def test_set_data_ignores_unknown(self):
         form = SimpleForm()
