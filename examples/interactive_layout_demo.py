@@ -53,11 +53,10 @@ class InteractiveDemoApp(ExampleApp):
 
     .demo-scroll {
         height: 1fr;
-        width: 80%;
+        width: 80;
     }
 
     .demo-content {
-        width: 80;
         padding: 1 2;
     }
 
@@ -67,7 +66,6 @@ class InteractiveDemoApp(ExampleApp):
         padding: 1 2;
         margin-bottom: 1;
         border: solid $accent;
-        height: auto;
     }
 
     .control-group {
