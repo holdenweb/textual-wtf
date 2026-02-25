@@ -12,13 +12,13 @@ from textual_wtf.fields import (
     TextField,
 )
 from textual_wtf.forms import Form
-from textual_wtf.validators import MinLength
+from textual_wtf.validators import FunctionValidator, MinLength
 
 
 class ContactForm(Form):
     name = StringField("Name", required=True, validators=[MinLength(2)])
     email = StringField("Email", help_text="Your email address")
-    age = IntegerField("Age", min_value=0, max_value=150)
+    age = IntegerField("Age", minimum=0, maximum=150)
     active = BooleanField("Active")
     notes = TextField("Notes")
     role = ChoiceField(
@@ -125,17 +125,17 @@ class TestBoundFieldValidation:
 
     def test_integer_coerced_at_init(self):
         """String '25' from the data dict is coerced to int at init time."""
-        form = ContactForm(data={"name": "Alice", "age": "25"})
+        form = ContactForm(data={"name": "Alice", "age": 25})
         assert form.age.value == 25  # already an int before validate()
 
     def test_integer_to_python_runs(self):
         """validate() passes and the value remains a correctly-typed int."""
-        form = ContactForm(data={"name": "Alice", "age": "25"})
+        form = ContactForm(data={"name": "Alice", "age": 25})
         assert form.age.validate() is True
         assert form.age.value == 25
 
     def test_integer_out_of_range(self):
-        form = ContactForm(data={"name": "Alice", "age": "200"})
+        form = ContactForm(data={"name": "Alice", "age": 200})
         assert form.age.validate() is False
 
     def test_integer_non_numeric(self):
@@ -154,7 +154,22 @@ class TestBoundFieldValidation:
         assert form.name.error_messages == form.name.errors
         assert len(form.name.error_messages) > 0
 
+    def test_callable_normalised_to_function_validator(self):
+        """A plain callable in validators= is wrapped in FunctionValidator."""
+
+        def no_spaces(value):
+            if " " in value:
+                raise ValidationError("No spaces allowed")
+
+        class StrictForm(Form):
+            code = StringField("Code", required=True, validators=[no_spaces])
+
+        form = StrictForm()
+        assert isinstance(form.code.validators[0], FunctionValidator)
+
     def test_callable_validator(self):
+        """FunctionValidator wrapping raises ValidationError on bad input."""
+
         def no_spaces(value):
             if " " in value:
                 raise ValidationError("No spaces allowed")
@@ -167,6 +182,8 @@ class TestBoundFieldValidation:
         assert "No spaces" in form.code.errors[0]
 
     def test_callable_validator_passes(self):
+        """FunctionValidator wrapping returns success for valid input."""
+
         def no_spaces(value):
             if " " in value:
                 raise ValidationError("No spaces allowed")
@@ -176,6 +193,54 @@ class TestBoundFieldValidation:
 
         form = StrictForm(data={"code": "nospace"})
         assert form.code.validate() is True
+
+
+# ── Convenience keyword validators ──────────────────────────────
+
+
+class TestConvenienceKwargs:
+    def test_string_field_min_length(self):
+        class F(Form):
+            name = StringField("Name", required=True, min_length=3)
+
+        assert F(data={"name": "Al"}).name.validate() is False
+        assert F(data={"name": "Alice"}).name.validate() is True
+
+    def test_string_field_max_length(self):
+        class F(Form):
+            name = StringField("Name", max_length=5)
+
+        assert F(data={"name": "Toolong"}).name.validate() is False
+        assert F(data={"name": "Hi"}).name.validate() is True
+
+    def test_integer_field_minimum(self):
+        class F(Form):
+            age = IntegerField("Age", minimum=0)
+
+        assert F(data={"age": -1}).age.validate() is False
+        assert F(data={"age": 0}).age.validate() is True
+
+    def test_integer_field_maximum(self):
+        class F(Form):
+            age = IntegerField("Age", maximum=150)
+
+        assert F(data={"age": 200}).age.validate() is False
+        assert F(data={"age": 100}).age.validate() is True
+
+    def test_integer_field_minimum_maximum_both(self):
+        class F(Form):
+            age = IntegerField("Age", minimum=18, maximum=65)
+
+        assert F(data={"age": 17}).age.validate() is False
+        assert F(data={"age": 66}).age.validate() is False
+        assert F(data={"age": 30}).age.validate() is True
+
+    def test_text_field_max_length(self):
+        class F(Form):
+            bio = TextField("Bio", max_length=10)
+
+        assert F(data={"bio": "Way too long text"}).bio.validate() is False
+        assert F(data={"bio": "Short"}).bio.validate() is True
 
 
 # ── __call__ ────────────────────────────────────────────────────

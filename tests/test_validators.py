@@ -2,8 +2,10 @@
 
 import pytest
 
+from textual_wtf.exceptions import ValidationError
 from textual_wtf.validators import (
     EmailValidator,
+    FunctionValidator,
     MaxLength,
     MaxValue,
     MinLength,
@@ -121,3 +123,35 @@ class TestEmailValidator:
 class TestValidatorBase:
     def test_base_succeeds(self):
         assert Validator().validate("anything").is_valid
+
+
+class TestFunctionValidator:
+    def test_success_when_callable_returns_normally(self):
+        v = FunctionValidator(lambda val: None)
+        assert v.validate("anything").is_valid
+
+    def test_failure_when_callable_raises_validation_error(self):
+        def reject_all(val):
+            raise ValidationError("Always fails.")
+
+        result = FunctionValidator(reject_all).validate("x")
+        assert not result.is_valid
+        assert "Always fails." in result.failure_descriptions[0]
+
+    def test_failure_description_preserved(self):
+        def check(val):
+            if len(val) < 3:
+                raise ValidationError("Too short.")
+
+        result = FunctionValidator(check).validate("ab")
+        assert not result.is_valid
+        assert "Too short." in result.failure_descriptions[0]
+
+    def test_passes_value_to_callable(self):
+        seen = []
+
+        def capture(val):
+            seen.append(val)
+
+        FunctionValidator(capture).validate("hello")
+        assert seen == ["hello"]

@@ -7,10 +7,12 @@ Validators subclass textual.validation.Validator, inheriting
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Callable
 
 from textual.validation import ValidationResult
 from textual.validation import Validator as TextualValidator
+
+from .exceptions import ValidationError
 
 
 class Validator(TextualValidator):
@@ -18,6 +20,34 @@ class Validator(TextualValidator):
 
     def validate(self, value: str) -> ValidationResult:
         return self.success()
+
+
+class FunctionValidator(Validator):
+    """Adapt a plain callable into the Validator interface.
+
+    The callable receives the field value and should either return
+    normally (indicating success) or raise ``ValidationError`` with a
+    descriptive message (indicating failure).
+
+    Example::
+
+        def no_spaces(value):
+            if " " in value:
+                raise ValidationError("No spaces allowed.")
+
+        name = StringField("Name", validators=[no_spaces])
+    """
+
+    def __init__(self, fn: Callable[[Any], None]) -> None:
+        super().__init__()
+        self._fn = fn
+
+    def validate(self, value: Any) -> ValidationResult:
+        try:
+            self._fn(value)
+            return self.success()
+        except ValidationError as e:
+            return self.failure(e.message)
 
 
 class Required(Validator):

@@ -16,7 +16,7 @@ from textual.widgets import Checkbox, Input, Label, Select, Static, TextArea
 
 from .exceptions import FormError, ValidationError
 from .types import HelpStyle, LabelStyle
-from .validators import Required, Validator
+from .validators import FunctionValidator, Required, Validator
 from .widgets import FormCheckbox, FormInput, FormSelect, FormTextArea
 
 if TYPE_CHECKING:
@@ -180,7 +180,10 @@ class BoundField(Container):
         if disabled is not None:
             self.disabled = disabled
         if validators is not None:
-            self._field.validators = validators
+            self._field.validators = [
+                v if isinstance(v, Validator) else FunctionValidator(v)
+                for v in validators
+            ]
 
         self._widget_kwargs.update(widget_kwargs)
         return self
@@ -236,18 +239,13 @@ class BoundField(Container):
             self.error_messages = []
             return True
 
-        # 4. Run all field validators
+        # 4. Run all field validators (all are Validator instances after
+        #    normalisation in Field.__init__ / BoundField.__call__)
         for v in self._field.validators:
-            if isinstance(v, Validator):
-                result = v.validate(python_value)
-                if not result.is_valid:
-                    for desc in result.failure_descriptions:
-                        failures.append(desc)
-            elif callable(v):
-                try:
-                    v(python_value)
-                except ValidationError as e:
-                    failures.append(e.message)
+            result = v.validate(python_value)
+            if not result.is_valid:
+                for desc in result.failure_descriptions:
+                    failures.append(desc)
 
         if failures:
             self.errors = failures

@@ -6,7 +6,7 @@ from typing import Any, Callable, TYPE_CHECKING
 
 from .exceptions import FieldError, ValidationError
 from .types import HelpStyle, LabelStyle
-from .validators import MaxValue, MinValue, Validator
+from .validators import FunctionValidator, MaxLength, MaxValue, MinLength, MinValue, Validator
 from .widgets import FormCheckbox, FormInput, FormSelect, FormTextArea
 
 if TYPE_CHECKING:
@@ -41,7 +41,10 @@ class Field:
         self.initial = initial
         self.required = required
         self.disabled = disabled
-        self.validators = list(validators)
+        self.validators = [
+            v if isinstance(v, Validator) else FunctionValidator(v)
+            for v in validators
+        ]
         self.help_text = help_text
         self.label_style: LabelStyle = label_style
         self.help_style: HelpStyle = help_style
@@ -61,6 +64,22 @@ class Field:
 
         return BoundField(field=self, form=form, name=name, data=data or {})
 
+    def _add_length_validators(
+        self,
+        min_length: int | None,
+        max_length: int | None,
+    ) -> None:
+        """Append MinLength / MaxLength validators.
+
+        Convenience for subclasses that support ``min_length`` /
+        ``max_length`` keyword arguments; call from ``__init__`` after
+        ``super().__init__()``.
+        """
+        if min_length is not None:
+            self.validators.append(MinLength(min_length))
+        if max_length is not None:
+            self.validators.append(MaxLength(max_length))
+
     def to_python(self, value: Any) -> Any:
         """Convert a raw widget value to the appropriate Python type.
 
@@ -75,6 +94,17 @@ class StringField(Field):
 
     default_widget_class = FormInput
 
+    def __init__(
+        self,
+        label: str,
+        *,
+        min_length: int | None = None,
+        max_length: int | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(label, **kwargs)
+        self._add_length_validators(min_length, max_length)
+
 
 class IntegerField(Field):
     """Integer numeric input. Default widget: FormInput with restricted input."""
@@ -85,17 +115,17 @@ class IntegerField(Field):
         self,
         label: str,
         *,
-        min_value: int | None = None,
-        max_value: int | None = None,
+        minimum: int | None = None,
+        maximum: int | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(label, **kwargs)
-        self.min_value = min_value
-        self.max_value = max_value
-        if min_value is not None:
-            self.validators.append(MinValue(min_value))
-        if max_value is not None:
-            self.validators.append(MaxValue(max_value))
+        self.minimum = minimum
+        self.maximum = maximum
+        if minimum is not None:
+            self.validators.append(MinValue(minimum))
+        if maximum is not None:
+            self.validators.append(MaxValue(maximum))
         self.widget_kwargs.setdefault("restrict", r"[0-9\-]*")
 
     def to_python(self, value: Any) -> Any:
@@ -140,3 +170,14 @@ class TextField(Field):
     """Multi-line text field. Default widget: FormTextArea."""
 
     default_widget_class = FormTextArea
+
+    def __init__(
+        self,
+        label: str,
+        *,
+        min_length: int | None = None,
+        max_length: int | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(label, **kwargs)
+        self._add_length_validators(min_length, max_length)

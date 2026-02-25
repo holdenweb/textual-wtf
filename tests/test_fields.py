@@ -11,7 +11,7 @@ from textual_wtf.fields import (
     StringField,
     TextField,
 )
-from textual_wtf.validators import MinLength, MinValue, MaxValue
+from textual_wtf.validators import FunctionValidator, MaxLength, MaxValue, MinLength, MinValue
 from textual_wtf.widgets import FormCheckbox, FormInput, FormSelect, FormTextArea
 
 
@@ -53,6 +53,12 @@ class TestFieldBase:
         f = Field("Name", validators=[v])
         assert f.validators == [v]
 
+    def test_callable_normalised_to_function_validator(self):
+        fn = lambda v: None  # noqa: E731
+        f = Field("Name", validators=[fn])
+        assert len(f.validators) == 1
+        assert isinstance(f.validators[0], FunctionValidator)
+
     def test_empty_validators_default(self):
         f = Field("Name")
         assert f.validators == []
@@ -86,6 +92,17 @@ class TestStringField:
         assert f.to_python("hello") == "hello"
         assert f.to_python(None) is None
 
+    def test_min_length_adds_validator(self):
+        f = StringField("Name", min_length=3)
+        assert any(isinstance(v, MinLength) for v in f.validators)
+
+    def test_max_length_adds_validator(self):
+        f = StringField("Name", max_length=100)
+        assert any(isinstance(v, MaxLength) for v in f.validators)
+
+    def test_no_length_kwargs_no_extra_validators(self):
+        assert StringField("Name").validators == []
+
 
 class TestIntegerField:
     def test_default_widget_class(self):
@@ -110,16 +127,16 @@ class TestIntegerField:
         with pytest.raises(ValidationError, match="whole number"):
             IntegerField("Age").to_python("abc")
 
-    def test_min_value_adds_validator(self):
-        f = IntegerField("Age", min_value=0)
+    def test_minimum_adds_validator(self):
+        f = IntegerField("Age", minimum=0)
         assert any(isinstance(v, MinValue) for v in f.validators)
 
-    def test_max_value_adds_validator(self):
-        f = IntegerField("Age", max_value=150)
+    def test_maximum_adds_validator(self):
+        f = IntegerField("Age", maximum=150)
         assert any(isinstance(v, MaxValue) for v in f.validators)
 
     def test_both_bounds(self):
-        f = IntegerField("Age", min_value=0, max_value=150)
+        f = IntegerField("Age", minimum=0, maximum=150)
         assert any(isinstance(v, MinValue) for v in f.validators)
         assert any(isinstance(v, MaxValue) for v in f.validators)
 
@@ -169,3 +186,11 @@ class TestTextField:
         f = TextField("Notes")
         assert f.to_python("hello") == "hello"
         assert f.to_python(None) is None
+
+    def test_min_length_adds_validator(self):
+        f = TextField("Notes", min_length=10)
+        assert any(isinstance(v, MinLength) for v in f.validators)
+
+    def test_max_length_adds_validator(self):
+        f = TextField("Notes", max_length=500)
+        assert any(isinstance(v, MaxLength) for v in f.validators)

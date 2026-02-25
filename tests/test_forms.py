@@ -12,7 +12,7 @@ from textual_wtf.forms import BaseForm, EmbeddedForm, Form
 
 class SimpleForm(Form):
     name = StringField("Name", required=True)
-    age = IntegerField("Age", min_value=0, max_value=150)
+    age = IntegerField("Age", minimum=0, maximum=150)
 
 
 class AddressForm(Form):
