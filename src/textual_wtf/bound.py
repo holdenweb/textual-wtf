@@ -51,11 +51,13 @@ class BoundField(Container):
     BoundField .field-help {
         color: $text-muted;
         margin-top: 0;
+        padding-left: 1;
     }
     BoundField .field-error {
         color: $error;
         display: none;
         margin-top: 0;
+        padding-left: 1;
     }
     BoundField .field-error.has-error {
         display: block;
