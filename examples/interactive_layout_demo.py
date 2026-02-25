@@ -6,7 +6,7 @@ Use radio buttons to switch between different layout styles in real-time.
 Run with: python examples/interactive_layout_demo.py
 """
 
-from textual.app import ComposeResult
+from textual.app import ComposeResult, on
 from textual.containers import Vertical, Container, ScrollableContainer
 from example_app import ExampleApp
 from textual.widgets import Static, RadioButton, RadioSet
@@ -36,6 +36,7 @@ class InteractiveDemoApp(ExampleApp):
     Screen {
         layout: vertical;
         overflow: hidden;
+        align: center middle;
     }
 
     .demo-title {
@@ -50,7 +51,7 @@ class InteractiveDemoApp(ExampleApp):
 
     .demo-scroll {
         height: 1fr;
-        width: 100%;
+        width: 80%;
     }
 
     .demo-content {
@@ -63,6 +64,7 @@ class InteractiveDemoApp(ExampleApp):
         padding: 1 2;
         margin-bottom: 1;
         border: solid $accent;
+        height: auto;
     }
 
     .control-group {
@@ -173,7 +175,7 @@ class InteractiveDemoApp(ExampleApp):
 
                 # Form container (will be replaced when options change)
                 with Container(id="form-container"):
-                    self.current_form = DemoForm(label_style="placeholder")
+                    self.current_form = DemoForm(label_style="above")
                     yield self.current_form.build_layout()
 
                 # Add some padding at bottom for scrolling
@@ -232,7 +234,8 @@ class InteractiveDemoApp(ExampleApp):
         self.current_form = DemoForm(data=old_data, label_style=self._label_style)
         form_container.mount(self.current_form.build_layout())
 
-    def on_form_submitted(self, event: Form.Submitted) -> None:
+    @on(Form.Submitted)
+    def form_submitted(self, event: Form.Submitted) -> None:
         """Handle form submission."""
         if event.form.is_valid():
             data = event.form.get_data()
@@ -240,7 +243,8 @@ class InteractiveDemoApp(ExampleApp):
         else:
             self.notify("Please fix errors before submitting", severity="error")
 
-    def on_form_cancelled(self, event: Form.Cancelled) -> None:
+    @on(Form.Cancelled)
+    def form_cancelled(self, event: Form.Cancelled) -> None:
         """Handle form cancellation."""
         self.notify("Form cancelled", severity="warning")
 
