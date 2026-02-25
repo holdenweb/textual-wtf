@@ -73,6 +73,23 @@ class FormMetaclass(type):
                         )
                     field_definitions[prefixed_name] = field_obj
                 to_remove.append(key)
+            elif (
+                isinstance(value, type)
+                and hasattr(value, "_field_definitions")
+                and value._field_definitions  # skip BaseForm itself
+            ):
+                # Direct Form subclass assignment — auto-embed using
+                # the class variable name as the prefix.
+                source_defs = value._field_definitions
+                for field_name, field_obj in source_defs.items():
+                    prefixed_name = f"{key}_{field_name}"
+                    if prefixed_name in field_definitions:
+                        raise FormError(
+                            f"Embedded field {prefixed_name!r} conflicts "
+                            f"with existing field."
+                        )
+                    field_definitions[prefixed_name] = field_obj
+                to_remove.append(key)
 
         for key in to_remove:
             del namespace[key]

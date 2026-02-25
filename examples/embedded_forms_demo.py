@@ -1,52 +1,31 @@
 """
-Example demonstrating embedded forms — multiple Form instances in one screen.
+Example demonstrating embedded forms — a single Form class whose fields come
+from nested Form subclass assignments.
 
 Shows:
-- A PersonalForm and two AddressForm instances (billing, shipping) embedded
-  in a shared screen layout; the address forms live inside a TabbedContent
-  so the user can switch between them without leaving the screen.
-- That each form has its own field namespace, distinct from the others.
-- An interactive field-path lookup: type a path such as  personal.name  or
-  billing.street  (or just  name  to auto-search all forms) and inspect the
-  field's current value and validation state — or see why the path fails.
-  Unqualified names like  street  that appear in multiple forms surface the
-  ambiguity and prompt for the qualified form.
+- Assigning a Form subclass to a class variable inside another Form.  The
+  metaclass flattens the inner form's fields into the parent, prefixed with
+  the variable name and an underscore (billing_street, shipping_city, etc.).
+- That unqualified attribute access (form.street) resolves when unambiguous,
+  and raises AmbiguousFieldError when the same suffix appears in multiple
+  embedded forms.
+- An interactive field-path lookup where the user can type a field name
+  and see how it resolves (or why it fails).
 
 Run with: python -m examples  (select "Embedded Forms")
 """
 
-from textual.app import ComposeResult, on
+from textual.app import ComposeResult
 from textual.containers import Horizontal, ScrollableContainer, Vertical
 
 from .example_screen import ExampleScreen
 from textual.widgets import Button, Input, Static, TabbedContent, TabPane
 from textual_wtf import Form, StringField
-
-
-class PersonalForm(Form):
-    """Personal details sub-form."""
-
-    label_style = "beside"
-    help_style = "tooltip"
-
-    name = StringField(
-        label="Name",
-        required=True,
-        min_length=2,
-        help_text="Given and family name",
-    )
-    email = StringField(
-        label="Email",
-        required=True,
-        help_text="Contact email address",
-    )
+from textual_wtf.exceptions import AmbiguousFieldError
 
 
 class AddressForm(Form):
-    """Postal address sub-form (reused for billing and shipping)."""
-
-    label_style = "beside"
-    help_style = "tooltip"
+    """Reusable postal address form (embedded into OrderForm twice)."""
 
     street = StringField(
         label="Street",
@@ -64,8 +43,30 @@ class AddressForm(Form):
     )
 
 
+class OrderForm(Form):
+    """Composite form: personal fields + two embedded address sub-forms."""
+
+    label_style = "beside"
+    help_style = "tooltip"
+
+    name = StringField(
+        label="Name",
+        required=True,
+        min_length=2,
+        help_text="Given and family name",
+    )
+    email = StringField(
+        label="Email",
+        required=True,
+        help_text="Contact email address",
+    )
+
+    billing = AddressForm
+    shipping = AddressForm
+
+
 class EmbeddedFormsDemoScreen(ExampleScreen):
-    """Screen with embedded forms and a live field-path lookup tool."""
+    """Screen with a single OrderForm rendered across panels and tabs."""
 
     CSS = """
     Screen {
@@ -156,40 +157,38 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
     """
 
     def compose(self) -> ComposeResult:
-        self.personal_form = PersonalForm()
-        self.billing_form = AddressForm()
-        self.shipping_form = AddressForm()
-        self._forms = {
-            "personal": self.personal_form,
-            "billing": self.billing_form,
-            "shipping": self.shipping_form,
-        }
+        self.form = OrderForm()
+        bf = self.form.bound_fields
 
         with ScrollableContainer(id="outer-scroll"):
             with Horizontal(id="forms-row"):
                 with Vertical(classes="form-panel"):
                     yield Static("personal", classes="panel-title")
-                    yield self.personal_form.build_layout()
+                    yield bf["name"]
+                    yield bf["email"]
                 with Vertical(classes="form-panel"):
                     yield Static("addresses", classes="panel-title")
                     with TabbedContent():
                         with TabPane("Billing", id="billing-tab"):
-                            yield self.billing_form.build_layout()
+                            yield bf["billing_street"]
+                            yield bf["billing_city"]
+                            yield bf["billing_postcode"]
                         with TabPane("Shipping", id="shipping-tab"):
-                            yield self.shipping_form.build_layout()
+                            yield bf["shipping_street"]
+                            yield bf["shipping_city"]
+                            yield bf["shipping_postcode"]
 
             with Vertical(id="query-section"):
                 yield Static("Field Lookup", id="query-title")
                 yield Static(
-                    "Enter a field path to inspect its current value and "
-                    "validation state.\n"
-                    "Examples:  personal.name   billing.street   shipping.city"
-                    "   street  (unqualified searches all forms)",
+                    "Type a field name to inspect it.  Try qualified names "
+                    "(billing_street), unqualified (name), or ambiguous "
+                    "(street).",
                     id="query-hint",
                 )
                 with Horizontal(id="query-row"):
                     yield Input(
-                        placeholder="personal.name  /  billing.street  /  street",
+                        placeholder="billing_street  /  name  /  street",
                         id="query-input",
                     )
                     yield Button("Look up", variant="primary", id="lookup-btn")
@@ -213,59 +212,37 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
         self.query_one("#query-result", Static).update(result)
 
     def _resolve(self, path: str) -> str:
-        """Resolve a field path and return a human-readable description."""
+        """Resolve a field name via the form's attribute access."""
         if not path:
-            return "Available field paths:\n  " + ",  ".join(self._all_paths())
+            names = ", ".join(self.form.bound_fields)
+            return f"All fields on OrderForm:\n  {names}"
 
-        if "." in path:
-            form_name, _, field_name = path.partition(".")
-            return self._lookup(form_name, field_name)
-
-        # Unqualified name — search all forms
-        found = [
-            form_name
-            for form_name, form in self._forms.items()
-            if path in form.bound_fields
-        ]
-        if not found:
+        # Try the form's own __getattr__ resolution — this handles
+        # qualified names, unqualified unambiguous, and ambiguous cases.
+        try:
+            bf = self.form.get_field(path)
+        except AmbiguousFieldError as exc:
             return (
-                f"Field '{path}' not found in any form.\n"
-                f"All paths: {', '.join(self._all_paths())}"
+                f"'{exc.name}' is ambiguous — it matches multiple "
+                f"embedded fields:\n  {', '.join(exc.candidates)}\n"
+                f"Use the full prefixed name instead."
             )
-        if len(found) > 1:
+        except AttributeError:
+            names = ", ".join(self.form.bound_fields)
             return (
-                f"'{path}' exists in multiple forms: {', '.join(found)}.\n"
-                f"Use qualified syntax, e.g.  {found[0]}.{path}"
-            )
-        return self._lookup(found[0], path)
-
-    def _lookup(self, form_name: str, field_name: str) -> str:
-        """Look up a specific form.field and describe it."""
-        form = self._forms.get(form_name)
-        if form is None:
-            available = ",  ".join(self._forms)
-            return (
-                f"No form named '{form_name}'.\n"
-                f"Available forms:  {available}"
-            )
-
-        bf = form.bound_fields.get(field_name)
-        if bf is None:
-            available = ",  ".join(form.bound_fields)
-            return (
-                f"Form '{form_name}' has no field '{field_name}'.\n"
-                f"Fields in '{form_name}':  {available}"
+                f"No field '{path}' on OrderForm.\n"
+                f"Available: {names}"
             )
 
         try:
-            value = form.get_data().get(field_name)
+            value = self.form.get_data().get(bf.name)
             value_repr = repr(value)
         except Exception:
-            value_repr = "(error reading value — field may contain invalid data)"
+            value_repr = "(error reading value)"
 
         errors = bf.errors
         lines = [
-            f"  path      {form_name}.{field_name}",
+            f"  name      {bf.name}",
             f"  label     {bf._field.label!r}",
             f"  required  {bf._field.required}",
             f"  value     {value_repr}",
@@ -277,23 +254,3 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
                 "  errors    (none — tab away from a field to trigger validation)"
             )
         return "\n".join(lines)
-
-    def _all_paths(self) -> list[str]:
-        return [
-            f"{form_name}.{field_name}"
-            for form_name, form in self._forms.items()
-            for field_name in form.bound_fields
-        ]
-
-    @on(Form.Submitted)
-    def form_submitted(self, event: Form.Submitted) -> None:
-        if event.form.is_valid():
-            data = event.form.get_data()
-            self.notify(f"Submitted: {data}", severity="information")
-        else:
-            self.notify("Please fix validation errors first", severity="error")
-
-    @on(Form.Cancelled)
-    def form_cancelled(self, event: Form.Cancelled) -> None:
-        self.notify("Form cancelled", severity="warning")
-        self.action_back()

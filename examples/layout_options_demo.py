@@ -42,6 +42,7 @@ class LayoutOptionsDemoScreen(ExampleScreen):
     CSS = """
     Screen {
         layout: horizontal;
+        align: left top;
         overflow: auto;
     }
 

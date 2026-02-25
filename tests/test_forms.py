@@ -76,6 +76,60 @@ class TestFormMetaclass:
         marker = AddressForm.embed(prefix="test", title="Test Addr")
         assert marker.title == "Test Addr"
 
+    # ── Direct Form class assignment (auto-embed) ──
+
+    def test_direct_class_assignment_expands_fields(self):
+        class DirectOrderForm(Form):
+            billing = AddressForm
+            shipping = AddressForm
+            notes = TextField("Notes")
+
+        defs = DirectOrderForm._field_definitions
+        assert "billing_street" in defs
+        assert "billing_city" in defs
+        assert "billing_postcode" in defs
+        assert "shipping_street" in defs
+        assert "shipping_city" in defs
+        assert "shipping_postcode" in defs
+        assert "notes" in defs
+        assert len(defs) == 7
+
+    def test_direct_class_assignment_removes_class_attr(self):
+        class DirectOrderForm(Form):
+            billing = AddressForm
+
+        assert not isinstance(getattr(DirectOrderForm, "billing", None), type)
+
+    def test_direct_class_assignment_collision_raises(self):
+        with pytest.raises(FormError, match="conflicts"):
+
+            class BadForm(Form):
+                billing_street = StringField("Street")
+                billing = AddressForm
+
+    def test_direct_class_assignment_get_data(self):
+        class DirectOrderForm(Form):
+            billing = AddressForm
+
+        form = DirectOrderForm(data={"billing_street": "99 High St"})
+        assert form.get_data()["billing_street"] == "99 High St"
+
+    def test_direct_class_assignment_unqualified_access(self):
+        class SingleEmbedForm(Form):
+            addr = AddressForm
+
+        form = SingleEmbedForm()
+        # Unqualified access works when there's no ambiguity
+        assert form.street.name == "addr_street"
+
+    def test_direct_class_assignment_ambiguous_raises(self):
+        class DualEmbedForm(Form):
+            billing = AddressForm
+            shipping = AddressForm
+
+        with pytest.raises(AmbiguousFieldError):
+            _ = DualEmbedForm().street
+
 
 # ── Form instance ──────────────────────────────────────────────
 
