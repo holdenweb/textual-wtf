@@ -351,18 +351,31 @@ class TestValidateFor:
         assert form.name.has_error is True
         assert any("at least 5" in e for e in form.name.errors)
 
-    def test_validate_runs_all_validators_regardless_of_validate_on(self):
-        """validate() (submit path) runs every validator regardless of validate_on."""
+    def test_submit_triggers_min_length(self):
+        """validate() routes through _validate_for("submit"), which fires min_length."""
 
         class F(Form):
             name = StringField("Name", required=True, min_length=5)
 
         form = F(data={"name": "ab"})
-        # _validate_for("change") would pass (min_length not in change validators)
+        # change: min_length not in change validators — passes
         assert form.name._validate_for("change") is True
-        # validate() must still catch the min_length violation
+        # submit via validate(): min_length has "submit" in validate_on — fails
         assert form.name.validate() is False
         assert any("at least 5" in e for e in form.name.errors)
+
+    def test_validate_delegates_to_validate_for_submit(self):
+        """validate() and _validate_for("submit") produce identical outcomes."""
+
+        class F(Form):
+            code = StringField("Code", min_length=4)
+
+        form1 = F(data={"code": "ab"})
+        form2 = F(data={"code": "ab"})
+        result_via_validate = form1.code.validate()
+        result_via_event = form2.code._validate_for("submit")
+        assert result_via_validate == result_via_event
+        assert form1.code.errors == form2.code.errors
 
     def test_validate_for_clears_errors_when_valid(self):
         """_validate_for clears has_error and errors when the value is now valid."""

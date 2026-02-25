@@ -9,10 +9,10 @@ Each validator carries a ``validate_on`` frozenset that controls which
 
 Default event assignments:
 
-* ``{"blur"}``   — Required, MinLength, MinValue, EmailValidator,
-                    FunctionValidator (fire when the user leaves the field)
-* ``{"change", "blur"}`` — MaxLength, MaxValue
-                    (fire immediately so the user can see they've gone too far)
+* ``{"blur", "submit"}``   — Required, MinLength, MinValue, EmailValidator,
+                    FunctionValidator (fire when leaving the field and on submit)
+* ``{"change", "blur", "submit"}`` — MaxLength, MaxValue
+                    (fire immediately while typing, on blur, and on submit)
 
 Override per-class by setting ``validate_on`` as a class attribute, or
 per-instance by passing ``validate_on=`` at construction time.
@@ -32,10 +32,10 @@ from .exceptions import ValidationError
 class Validator(TextualValidator):
     """Base class for textual-wtf validators.
 
-    Fires on ``{"blur"}`` by default.
+    Fires on ``{"blur", "submit"}`` by default.
     """
 
-    validate_on: frozenset[str] = frozenset({"blur"})
+    validate_on: frozenset[str] = frozenset({"blur", "submit"})
 
     def __init__(
         self,
@@ -116,11 +116,11 @@ class MinLength(Validator):
 class MaxLength(Validator):
     """Validates that len(value) <= n.
 
-    Fires on ``{"change", "blur"}`` by default so the limit is enforced
-    immediately as the user types.
+    Fires on ``{"change", "blur", "submit"}`` by default so the limit is
+    enforced immediately as the user types.
     """
 
-    validate_on: frozenset[str] = frozenset({"change", "blur"})
+    validate_on: frozenset[str] = frozenset({"change", "blur", "submit"})
 
     def __init__(self, n: int, *, validate_on: frozenset[str] | None = None) -> None:
         super().__init__(validate_on=validate_on)
@@ -155,11 +155,11 @@ class MinValue(Validator):
 class MaxValue(Validator):
     """Validates that value <= n.
 
-    Fires on ``{"change", "blur"}`` by default so the limit is enforced
-    immediately as the user types.
+    Fires on ``{"change", "blur", "submit"}`` by default so the limit is
+    enforced immediately as the user types.
     """
 
-    validate_on: frozenset[str] = frozenset({"change", "blur"})
+    validate_on: frozenset[str] = frozenset({"change", "blur", "submit"})
 
     def __init__(
         self, n: int | float, *, validate_on: frozenset[str] | None = None

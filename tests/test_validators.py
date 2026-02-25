@@ -131,42 +131,52 @@ class TestValidateOnAttributes:
     def test_base_validator_fires_on_blur(self):
         assert "blur" in Validator().validate_on
 
+    def test_base_validator_fires_on_submit(self):
+        assert "submit" in Validator().validate_on
+
     def test_base_validator_not_on_change(self):
         assert "change" not in Validator().validate_on
 
-    def test_max_length_fires_on_change_and_blur(self):
+    def test_max_length_fires_on_change_blur_and_submit(self):
         v = MaxLength(10)
         assert "change" in v.validate_on
         assert "blur" in v.validate_on
+        assert "submit" in v.validate_on
 
-    def test_max_value_fires_on_change_and_blur(self):
+    def test_max_value_fires_on_change_blur_and_submit(self):
         v = MaxValue(10)
         assert "change" in v.validate_on
         assert "blur" in v.validate_on
+        assert "submit" in v.validate_on
 
-    def test_min_length_fires_on_blur_only(self):
+    def test_min_length_fires_on_blur_and_submit(self):
         v = MinLength(3)
         assert "blur" in v.validate_on
+        assert "submit" in v.validate_on
         assert "change" not in v.validate_on
 
-    def test_min_value_fires_on_blur_only(self):
+    def test_min_value_fires_on_blur_and_submit(self):
         v = MinValue(3)
         assert "blur" in v.validate_on
+        assert "submit" in v.validate_on
         assert "change" not in v.validate_on
 
-    def test_required_fires_on_blur_only(self):
+    def test_required_fires_on_blur_and_submit(self):
         v = Required()
         assert "blur" in v.validate_on
+        assert "submit" in v.validate_on
         assert "change" not in v.validate_on
 
-    def test_email_validator_fires_on_blur_only(self):
+    def test_email_validator_fires_on_blur_and_submit(self):
         v = EmailValidator()
         assert "blur" in v.validate_on
+        assert "submit" in v.validate_on
         assert "change" not in v.validate_on
 
-    def test_function_validator_fires_on_blur_only(self):
+    def test_function_validator_fires_on_blur_and_submit(self):
         v = FunctionValidator(lambda x: None)
         assert "blur" in v.validate_on
+        assert "submit" in v.validate_on
         assert "change" not in v.validate_on
 
     def test_override_validate_on_via_kwarg(self):
@@ -177,11 +187,11 @@ class TestValidateOnAttributes:
     def test_override_does_not_mutate_class_attribute(self):
         """Instance override should shadow the class attribute, not mutate it."""
         MinLength(3, validate_on=frozenset({"change"}))
-        assert MinLength.validate_on == frozenset({"blur"})
+        assert MinLength.validate_on == frozenset({"blur", "submit"})
 
     def test_max_length_class_attribute_unchanged_by_instance(self):
         MaxLength(5, validate_on=frozenset({"blur"}))
-        assert MaxLength.validate_on == frozenset({"change", "blur"})
+        assert MaxLength.validate_on == frozenset({"change", "blur", "submit"})
 
 
 class TestFunctionValidator:

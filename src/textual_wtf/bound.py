@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
+from textual import events
 from textual.containers import Container, Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.reactive import reactive
@@ -193,82 +194,21 @@ class BoundField(Container):
     # ── Validation ──────────────────────────────────────────────
 
     def validate(self) -> bool:
-        """Validate this field's current value.
+        """Validate this field's current value (submit path).
 
-        Runs to_python for type coercion, checks required, then runs
-        all field-level validators (success/failure pattern). Updates
-        errors, error_messages, and has_error. Returns True if valid.
+        Delegates to ``_validate_for("submit")``, which runs every
+        validator whose ``validate_on`` includes ``"submit"`` — which
+        is all validators by default.
         """
-        self.errors = []
-        failures: list[str] = []
-
-        # 1. Type coercion via to_python
-        try:
-            python_value = self._field.to_python(self.value)
-        except ValidationError as e:
-            failures.append(e.message)
-            self.errors = failures
-            self.has_error = True
-            self.error_messages = failures
-            return False
-
-        # Store the coerced value back
-        self.value = python_value
-
-        # 2. Required check
-        if self._field.required:
-            result = Required().validate(python_value)
-            if not result.is_valid:
-                desc = (
-                    result.failure_descriptions[0]
-                    if result.failure_descriptions
-                    else "This field is required."
-                )
-                failures.append(desc)
-                self.errors = failures
-                self.has_error = True
-                self.error_messages = failures
-                return False
-
-        # 3. Skip further validation if empty and not required
-        is_empty = (
-            python_value is None
-            or (isinstance(python_value, str) and python_value.strip() == "")
-        )
-        if is_empty:
-            self.errors = []
-            self.has_error = False
-            self.error_messages = []
-            return True
-
-        # 4. Run all field validators (all are Validator instances after
-        #    normalisation in Field.__init__ / BoundField.__call__)
-        for v in self._field.validators:
-            result = v.validate(python_value)
-            if not result.is_valid:
-                for desc in result.failure_descriptions:
-                    failures.append(desc)
-
-        if failures:
-            self.errors = failures
-            self.has_error = True
-            self.error_messages = failures
-            return False
-
-        self.errors = []
-        self.has_error = False
-        self.error_messages = []
-        return True
+        return self._validate_for("submit")
 
     def _validate_for(self, event: str) -> bool:
         """Run the validation pipeline for a specific triggering event.
 
         Only validators whose ``validate_on`` includes *event* are
-        executed.  The ``required`` check is performed only for
-        ``"blur"``.  Returns True if no failures were found.
-
-        The submit path uses ``validate()`` which ignores
-        ``validate_on`` and always runs every validator.
+        executed.  The ``required`` check is performed for ``"blur"``
+        and ``"submit"`` (not for ``"change"``).  Returns True if no
+        failures were found.
         """
         failures: list[str] = []
 
@@ -284,8 +224,9 @@ class BoundField(Container):
 
         self.value = python_value
 
-        # 2. Required check — only when the user has finished with the field
-        if event == "blur" and self._field.required:
+        # 2. Required check — when the user has finished with the field,
+        #    or when the form is submitted.
+        if event in {"blur", "submit"} and self._field.required:
             result = Required().validate(python_value)
             if not result.is_valid:
                 desc = (
@@ -299,7 +240,8 @@ class BoundField(Container):
                 self.error_messages = failures
                 return False
 
-        # 3. Skip further validation if value is empty
+        # 3. Skip further validation if value is empty (field is optional
+        #    and has no value yet — validators should not fire).
         is_empty = (
             python_value is None
             or (isinstance(python_value, str) and python_value.strip() == "")
@@ -480,9 +422,10 @@ class BoundField(Container):
             self.value = self._inner_widget.text
             self.is_dirty = True
 
-    def on_blur(self) -> None:
-        """Run blur validators when the field loses focus."""
-        self._validate_for("blur")
+    def on_descendant_blur(self, event: events.DescendantBlur) -> None:
+        """Run blur validators when the inner field widget loses focus."""
+        if event.widget is self._inner_widget:
+            self._validate_for("blur")
 
     # ── Internal helpers ────────────────────────────────────────
 
