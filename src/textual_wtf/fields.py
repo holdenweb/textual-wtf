@@ -32,8 +32,8 @@ class Field:
         disabled: bool = False,
         validators: list[Validator | Callable[..., Any]] | tuple[()] = (),
         help_text: str = "",
-        label_style: LabelStyle = "above",
-        help_style: HelpStyle = "below",
+        label_style: LabelStyle | None = None,
+        help_style: HelpStyle | None = None,
         widget_class: type | None = None,
         **widget_kwargs: Any,
     ) -> None:
@@ -46,10 +46,10 @@ class Field:
             for v in validators
         ]
         self.help_text = help_text
-        self.label_style: LabelStyle = label_style
-        self.help_style: HelpStyle = help_style
-        self._label_style_explicit = label_style != "above"
-        self._help_style_explicit = help_style != "below"
+        self._label_style_explicit = label_style is not None
+        self._help_style_explicit = help_style is not None
+        self.label_style: LabelStyle = label_style if label_style is not None else "above"
+        self.help_style: HelpStyle = help_style if help_style is not None else "below"
         self.widget_class = widget_class or self.default_widget_class
         self.widget_kwargs = widget_kwargs
 

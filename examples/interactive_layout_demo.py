@@ -230,9 +230,11 @@ class InteractiveDemoApp(ExampleApp):
         form_container = self.query_one("#form-container")
         form_container.remove_children()
 
-        # help_style is a class-level attribute; set it before constructing
-        DemoForm.help_style = self._help_style
-        self.current_form = DemoForm(data=old_data, label_style=self._label_style)
+        self.current_form = DemoForm(
+            data=old_data,
+            label_style=self._label_style,
+            help_style=self._help_style,
+        )
         form_container.mount(self.current_form.build_layout())
 
     @on(Form.Submitted)

@@ -117,11 +117,15 @@ class BaseForm(metaclass=FormMetaclass):
         *,
         layout_class: type[FormLayout] | None = None,
         label_style: LabelStyle | None = None,
+        help_style: HelpStyle | None = None,
     ) -> None:
         self._data = data or {}
         self._layout_class = layout_class or self.__class__.layout_class
         self._instance_label_style = (
             label_style if label_style is not None else self.__class__.label_style
+        )
+        self._instance_help_style = (
+            help_style if help_style is not None else self.__class__.help_style
         )
 
         # Bind all fields
@@ -135,7 +139,7 @@ class BaseForm(metaclass=FormMetaclass):
             if not field._label_style_explicit:
                 bf._label_style = self._instance_label_style
             if not field._help_style_explicit:
-                bf._help_style = self.__class__.help_style
+                bf._help_style = self._instance_help_style
             self._bound_fields[name] = bf
 
     # ── Field access ────────────────────────────────────────────

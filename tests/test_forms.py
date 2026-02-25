@@ -366,3 +366,55 @@ class TestLabelStyleCascade:
     def test_instance_label_style_override(self):
         form = SimpleForm(label_style="beside")
         assert form.name.label_style == "beside"
+
+
+# ── Help style cascade ─────────────────────────────────────────
+
+
+class TestHelpStyleCascade:
+    def test_form_level_propagates(self):
+
+        class TooltipForm(Form):
+            help_style = "tooltip"
+            name = StringField("Name")
+            email = StringField("Email")
+
+        form = TooltipForm()
+        assert form.name.help_style == "tooltip"
+        assert form.email.help_style == "tooltip"
+
+    def test_field_level_overrides_form_level(self):
+
+        class MixedForm(Form):
+            help_style = "tooltip"
+            name = StringField("Name", help_style="below")
+            email = StringField("Email")
+
+        form = MixedForm()
+        assert form.name.help_style == "below"
+        assert form.email.help_style == "tooltip"
+
+    def test_instance_help_style_override(self):
+        form = SimpleForm(help_style="tooltip")
+        assert form.name.help_style == "tooltip"
+
+    def test_instance_overrides_class_default(self):
+        """Instance kwarg beats the class-level default."""
+
+        class BelowForm(Form):
+            help_style = "below"
+            name = StringField("Name")
+
+        form = BelowForm(help_style="tooltip")
+        assert form.name.help_style == "tooltip"
+
+    def test_field_explicit_survives_instance_override(self):
+        """A field with an explicit help_style is not overridden by the instance kwarg."""
+
+        class F(Form):
+            name = StringField("Name", help_style="below")
+            email = StringField("Email")
+
+        form = F(help_style="tooltip")
+        assert form.name.help_style == "below"   # field set it explicitly
+        assert form.email.help_style == "tooltip"  # instance default applied
