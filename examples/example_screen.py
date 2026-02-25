@@ -3,12 +3,12 @@
 import inspect
 from pathlib import Path
 
-from textual.app import App
+from textual.screen import Screen
 from textual.widgets import Static
 
 
-class ExampleApp(App):
-    """Base App for textual-wtf example programs.
+class ExampleScreen(Screen):
+    """Base Screen for textual-wtf example programs.
 
     Provides:
     - A one-row inverted header (docked top) showing the example's source path.
@@ -45,5 +45,9 @@ class ExampleApp(App):
             except (TypeError, OSError):
                 source_path = "<unknown>"
 
-        self.screen.mount(Static(source_path, classes="example-header"), before=0)
-        self.screen.mount(Static("", classes="example-footer"))
+        self.mount(Static(source_path, classes="example-header"), before=0)
+        self.mount(Static("", classes="example-footer"))
+
+
+    def on_click(self, event):
+        self.app.log(self.app.tree())

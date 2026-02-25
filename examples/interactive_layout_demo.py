@@ -5,10 +5,11 @@ Use radio buttons to switch between different layout styles in real-time.
 
 Run with: python examples/interactive_layout_demo.py
 """
+import wingdbstub
 
 from textual.app import ComposeResult, on
 from textual.containers import Vertical, Container, ScrollableContainer
-from example_app import ExampleApp
+from .example_screen import ExampleScreen
 from textual.widgets import Static, RadioButton, RadioSet
 from textual_wtf import Form, StringField, IntegerField
 
@@ -31,7 +32,7 @@ class DemoForm(Form):
     )
 
 
-class InteractiveDemoApp(ExampleApp):
+class InteractiveDemoScreen(ExampleScreen):
     """Interactive app for exploring layout options."""
 
     CSS = """
