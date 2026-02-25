@@ -9,12 +9,13 @@ Demonstrates:
 This is a lower-level usage pattern; for the simplest approach see
 simple_rendered_form.py which uses Form.build_layout().
 
-Run with: python examples/simple_field_example.py
+Run with: python -m examples  (select "Simple Field Example")
 """
 
 from textual.app import ComposeResult
 from textual.containers import Container
-from example_app import ExampleApp
+
+from .example_screen import ExampleScreen
 from textual.widgets import Button
 from textual_wtf import Form, StringField
 
@@ -35,8 +36,8 @@ class SimpleForm(Form):
     )
 
 
-class SimpleFormApp(ExampleApp):
-    """App demonstrating direct BoundField widget usage."""
+class SimpleFieldExampleScreen(ExampleScreen):
+    """Screen demonstrating direct BoundField widget usage."""
 
     CSS = """
     #form-container {
@@ -68,8 +69,3 @@ class SimpleFormApp(ExampleApp):
                 self.notify(f"Form valid! Data: {data}", severity="information")
             else:
                 self.notify("Please fix the errors above", severity="error")
-
-
-if __name__ == "__main__":
-    app = SimpleFormApp()
-    app.run()

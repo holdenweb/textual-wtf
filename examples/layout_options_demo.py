@@ -1,12 +1,13 @@
 """
 Example demonstrating different FieldContainer layout options.
 
-Run with: python examples/layout_options_demo.py
+Run with: python -m examples  (select "Layout Options Demo")
 """
 
 from textual.app import ComposeResult, on
 from textual.containers import Vertical
-from example_app import ExampleApp
+
+from .example_screen import ExampleScreen
 from textual.widgets import Static
 from textual_wtf import Form, StringField, IntegerField
 
@@ -35,8 +36,8 @@ class PlaceholderForm(Form):
     age = IntegerField(label="Age", minimum=0, maximum=130)
 
 
-class LayoutDemoApp(ExampleApp):
-    """App showing different layout options side-by-side."""
+class LayoutOptionsDemoScreen(ExampleScreen):
+    """Screen showing different layout options side-by-side."""
 
     CSS = """
     Screen {
@@ -160,8 +161,3 @@ class LayoutDemoApp(ExampleApp):
     def on_cancelled(self, event: Form.Cancelled) -> None:
         """Handle form cancellation."""
         self.notify("Form cancelled", severity="warning")
-
-
-if __name__ == "__main__":
-    app = LayoutDemoApp()
-    app.run()

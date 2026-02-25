@@ -2,14 +2,15 @@
 Simplest possible form example for textual-wtf 0.9.x.
 
 Demonstrates:
-- Form.render() with the built-in DefaultFormLayout
+- Form.build_layout() with the built-in DefaultFormLayout
 - Submitted / Cancelled message handling via @on decorator
 
-Run with: python examples/simple_rendered_form.py
+Run with: python -m examples  (select "Simple Rendered Form")
 """
 
 from textual.app import ComposeResult, on
-from example_app import ExampleApp
+
+from .example_screen import ExampleScreen
 from textual_wtf import Form, StringField, IntegerField
 
 
@@ -32,8 +33,8 @@ class UserForm(Form):
     )
 
 
-class FormApp(ExampleApp):
-    """Minimal app that displays a form."""
+class SimpleRenderedFormScreen(ExampleScreen):
+    """Minimal screen that displays a form via build_layout()."""
 
     CSS = """
     FormLayout {
@@ -54,9 +55,4 @@ class FormApp(ExampleApp):
     @on(Form.Cancelled)
     def on_cancelled(self, event: Form.Cancelled) -> None:
         self.notify("Form cancelled", severity="warning")
-        self.exit()
-
-
-if __name__ == "__main__":
-    app = FormApp()
-    app.run()
+        self.action_back()

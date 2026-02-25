@@ -3,9 +3,8 @@ Interactive demo showing field container layout options.
 
 Use radio buttons to switch between different layout styles in real-time.
 
-Run with: python examples/interactive_layout_demo.py
+Run with: python -m examples  (select "Interactive Layout Demo")
 """
-import wingdbstub
 
 from textual.app import ComposeResult, on
 from textual.containers import Vertical, Container, ScrollableContainer
@@ -254,5 +253,4 @@ class InteractiveDemoScreen(ExampleScreen):
 
 
 if __name__ == "__main__":
-    app = InteractiveDemoApp()
-    app.run()
+    print("Run the full demo suite with:  python -m examples")

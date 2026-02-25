@@ -6,12 +6,13 @@ This combines:
 - BoundField pattern (like 0.5.x)
 - New protocols/mixins architecture (from your design)
 
-Run with: python examples/form_example_0_6_0a3.py
+Run with: python -m examples  (select "Form Example 0.6.0a3")
 """
 
 from textual.app import ComposeResult
 from textual.containers import Container
-from example_app import ExampleApp
+
+from .example_screen import ExampleScreen
 from textual.widgets import Button
 from textual_wtf import Form, StringField, IntegerField
 
@@ -34,8 +35,8 @@ class UserForm(Form):
     )
 
 
-class FormApp(ExampleApp):
-    """App demonstrating the new Form/BoundField architecture."""
+class FormExampleScreen(ExampleScreen):
+    """Screen demonstrating the Form/BoundField architecture."""
 
     CSS = """
     #form-container {
@@ -75,8 +76,3 @@ class FormApp(ExampleApp):
                     if bf.errors
                 }
                 self.notify(f"Errors: {errors}", severity="error")
-
-
-if __name__ == "__main__":
-    app = FormApp()
-    app.run()
