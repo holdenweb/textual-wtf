@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
-from textual.containers import Container, Horizontal
+from textual.containers import Container, Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.reactive import reactive
 from textual.widget import Widget
@@ -40,6 +40,10 @@ class BoundField(Container):
     }
     BoundField .field-beside {
         height: auto;
+    }
+    BoundField .field-input-col {
+        height: auto;
+        width: 1fr;
     }
     BoundField .field-label {
         margin-bottom: 0;
@@ -269,22 +273,33 @@ class BoundField(Container):
         if ls == "above":
             yield Label(self.label, classes="field-label")
             yield inner_widget
+            if self.help_text:
+                if hs == "below":
+                    yield Static(self.help_text, classes="field-help")
+                elif hs == "tooltip":
+                    inner_widget.tooltip = self.help_text
+            yield Label("", classes="field-error")
         elif ls == "beside":
             with Horizontal(classes="field-beside"):
                 yield Label(self.label, classes="field-label")
-                yield inner_widget
+                with Vertical(classes="field-input-col"):
+                    yield inner_widget
+                    if self.help_text:
+                        if hs == "below":
+                            yield Static(self.help_text, classes="field-help")
+                        elif hs == "tooltip":
+                            inner_widget.tooltip = self.help_text
+                    yield Label("", classes="field-error")
         elif ls == "placeholder":
             if isinstance(inner_widget, (Input, FormInput)):
                 inner_widget.placeholder = self.label
             yield inner_widget
-
-        if self.help_text:
-            if hs == "below":
-                yield Static(self.help_text, classes="field-help")
-            elif hs == "tooltip":
-                inner_widget.tooltip = self.help_text
-
-        yield Label("", classes="field-error")
+            if self.help_text:
+                if hs == "below":
+                    yield Static(self.help_text, classes="field-help")
+                elif hs == "tooltip":
+                    inner_widget.tooltip = self.help_text
+            yield Label("", classes="field-error")
 
     def _build_inner_widget(self) -> Widget:
         """Instantiate the inner widget from Field configuration."""
