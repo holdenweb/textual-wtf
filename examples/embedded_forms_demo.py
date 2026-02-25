@@ -2,12 +2,15 @@
 Example demonstrating embedded forms — multiple Form instances in one screen.
 
 Shows:
-- Two Form instances (personal, address) embedded side-by-side in a
-  shared screen layout.
-- That each form has its own field namespace, distinct from the other.
+- A PersonalForm and two AddressForm instances (billing, shipping) embedded
+  in a shared screen layout; the address forms live inside a TabbedContent
+  so the user can switch between them without leaving the screen.
+- That each form has its own field namespace, distinct from the others.
 - An interactive field-path lookup: type a path such as  personal.name  or
-  address.city  (or just  name  to auto-search all forms) and inspect the
+  billing.street  (or just  name  to auto-search all forms) and inspect the
   field's current value and validation state — or see why the path fails.
+  Unqualified names like  street  that appear in multiple forms surface the
+  ambiguity and prompt for the qualified form.
 
 Run with: python -m examples  (select "Embedded Forms")
 """
@@ -16,12 +19,15 @@ from textual.app import ComposeResult, on
 from textual.containers import Horizontal, ScrollableContainer, Vertical
 
 from .example_screen import ExampleScreen
-from textual.widgets import Button, Input, Static
+from textual.widgets import Button, Input, Static, TabbedContent, TabPane
 from textual_wtf import Form, StringField
 
 
 class PersonalForm(Form):
     """Personal details sub-form."""
+
+    label_style = "beside"
+    help_style = "tooltip"
 
     name = StringField(
         label="Name",
@@ -37,7 +43,10 @@ class PersonalForm(Form):
 
 
 class AddressForm(Form):
-    """Postal address sub-form."""
+    """Postal address sub-form (reused for billing and shipping)."""
+
+    label_style = "beside"
+    help_style = "tooltip"
 
     street = StringField(
         label="Street",
@@ -56,7 +65,7 @@ class AddressForm(Form):
 
 
 class EmbeddedFormsDemoScreen(ExampleScreen):
-    """Screen with two embedded forms and a live field-path lookup tool."""
+    """Screen with embedded forms and a live field-path lookup tool."""
 
     CSS = """
     Screen {
@@ -90,6 +99,19 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
         padding: 0 1;
         margin-bottom: 1;
         text-align: center;
+    }
+
+    TabbedContent {
+        height: auto;
+    }
+
+    TabbedContent > ContentSwitcher {
+        height: auto;
+    }
+
+    TabPane {
+        height: auto;
+        padding: 0;
     }
 
     #query-section {
@@ -135,10 +157,12 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
 
     def compose(self) -> ComposeResult:
         self.personal_form = PersonalForm()
-        self.address_form = AddressForm()
+        self.billing_form = AddressForm()
+        self.shipping_form = AddressForm()
         self._forms = {
             "personal": self.personal_form,
-            "address": self.address_form,
+            "billing": self.billing_form,
+            "shipping": self.shipping_form,
         }
 
         with ScrollableContainer(id="outer-scroll"):
@@ -147,21 +171,25 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
                     yield Static("personal", classes="panel-title")
                     yield self.personal_form.build_layout()
                 with Vertical(classes="form-panel"):
-                    yield Static("address", classes="panel-title")
-                    yield self.address_form.build_layout()
+                    yield Static("addresses", classes="panel-title")
+                    with TabbedContent():
+                        with TabPane("Billing", id="billing-tab"):
+                            yield self.billing_form.build_layout()
+                        with TabPane("Shipping", id="shipping-tab"):
+                            yield self.shipping_form.build_layout()
 
             with Vertical(id="query-section"):
                 yield Static("Field Lookup", id="query-title")
                 yield Static(
                     "Enter a field path to inspect its current value and "
                     "validation state.\n"
-                    "Examples:  personal.name   address.city   name  "
-                    "(unqualified searches all forms)",
+                    "Examples:  personal.name   billing.street   shipping.city"
+                    "   street  (unqualified searches all forms)",
                     id="query-hint",
                 )
                 with Horizontal(id="query-row"):
                     yield Input(
-                        placeholder="personal.name  /  address.city  /  name",
+                        placeholder="personal.name  /  billing.street  /  street",
                         id="query-input",
                     )
                     yield Button("Look up", variant="primary", id="lookup-btn")
