@@ -7,10 +7,9 @@ Run with:
 from textual.app import App
 
 from .chooser_screen import ChooserScreen, DemoEntry
-from .form_example_0_6_0a3 import FormExampleScreen
+from .embedded_forms_demo import EmbeddedFormsDemoScreen
 from .interactive_layout_demo import InteractiveDemoScreen
 from .layout_options_demo import LayoutOptionsDemoScreen
-from .simple_field_example import SimpleFieldExampleScreen
 from .simple_rendered_form import SimpleRenderedFormScreen
 
 
@@ -21,19 +20,14 @@ DEMOS: list[DemoEntry] = [
         screen_class=SimpleRenderedFormScreen,
     ),
     DemoEntry(
-        title="Simple Field Example",
-        description="Direct BoundField usage without DefaultFormLayout",
-        screen_class=SimpleFieldExampleScreen,
-    ),
-    DemoEntry(
         title="Layout Options Demo",
         description="Three layout styles (above / beside / placeholder) side-by-side",
         screen_class=LayoutOptionsDemoScreen,
     ),
     DemoEntry(
-        title="Form Example 0.6.0a3",
-        description="BoundField with protocols/mixins architecture",
-        screen_class=FormExampleScreen,
+        title="Embedded Forms",
+        description="Two forms side by side; inspect any field by name",
+        screen_class=EmbeddedFormsDemoScreen,
     ),
     DemoEntry(
         title="Interactive Layout Demo",

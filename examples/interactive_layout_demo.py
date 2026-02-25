@@ -176,7 +176,7 @@ class InteractiveDemoScreen(ExampleScreen):
 
                 # Form container (will be replaced when options change)
                 with Container(id="form-container"):
-                    self.current_form = DemoForm(label_style="above")
+                    self.current_form = DemoForm(label_style="placeholder")
                     yield self.current_form.build_layout()
 
                 # Add some padding at bottom for scrolling
@@ -250,6 +250,7 @@ class InteractiveDemoScreen(ExampleScreen):
     def form_cancelled(self, event: Form.Cancelled) -> None:
         """Handle form cancellation."""
         self.notify("Form cancelled", severity="warning")
+        self.action_back()
 
 
 if __name__ == "__main__":

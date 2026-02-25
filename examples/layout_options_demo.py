@@ -161,3 +161,4 @@ class LayoutOptionsDemoScreen(ExampleScreen):
     def on_cancelled(self, event: Form.Cancelled) -> None:
         """Handle form cancellation."""
         self.notify("Form cancelled", severity="warning")
+        self.action_back()
