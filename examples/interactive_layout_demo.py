@@ -20,11 +20,12 @@ class DemoForm(Form):
         label="Name",
         required=True,
         min_length=3,
+        max_length=12,
         help_text="Enter your full name"
     )
     age = IntegerField(
         label="Age",
-        minimum=0,
+        minimum=20,
         maximum=130,
         help_text="Enter your age in years"
     )
