@@ -26,3 +26,8 @@ asyncio_mode = "auto"
 dev = [
     "textual-dev>=1.8.0",
 ]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+    "mkdocs-autorefs>=1.2",
+]

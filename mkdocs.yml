@@ -1,0 +1,111 @@
+site_name: textual-wtf
+site_description: Declarative forms library for Textual TUI applications
+site_url: https://textualize.github.io/textual-wtf/
+repo_url: https://github.com/Textualize/textual-wtf
+repo_name: Textualize/textual-wtf
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - navigation.tabs.sticky
+    - navigation.footer
+    - content.code.annotate
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - admonition
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.keys
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.details
+
+extra_css:
+  - stylesheets/custom.css
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          import:
+            - https://docs.python.org/3/objects.inv
+            - https://textual.textualize.io/objects.inv
+          options:
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: false
+            members_order: source
+            filters:
+              - "!^_"
+              - "^__init__$"
+              - "^__call__$"
+
+nav:
+  - Home: index.md
+  - Getting Started: getting_started.md
+  - Guide:
+      - guide/index.md
+      - Defining Forms: guide/forms.md
+      - Fields & Validators: guide/fields.md
+      - Layout & Rendering: guide/layout.md
+      - Embedded Forms: guide/embedding.md
+      - Validation: guide/validation.md
+      - Tabbed Forms: guide/tabbed_forms.md
+  - Reference:
+      - reference/index.md
+      - Forms: reference/forms.md
+      - Fields: reference/fields.md
+      - Validators: reference/validators.md
+      - Layouts: reference/layouts.md
+      - TabbedForm: reference/tabbed_form.md
+      - Exceptions: reference/exceptions.md
+  - How-To:
+      - how-to/index.md
+      - Custom Layout: how-to/custom_layout.md
+      - Custom Validator: how-to/custom_validator.md
+      - Cross-Field Validation: how-to/cross_field_validation.md

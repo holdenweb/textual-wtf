@@ -1,0 +1,219 @@
+/* ============================================================
+   textual-wtf documentation — custom styles
+   Material for MkDocs theme overrides
+   ============================================================ */
+
+/* ── Colour palette ─────────────────────────────────────────────────────── */
+:root {
+  /* Slightly purple accent to match Textual's brand */
+  --md-primary-fg-color:        #5e4be1;
+  --md-primary-fg-color--light: #8272ea;
+  --md-primary-fg-color--dark:  #4535b8;
+  --md-accent-fg-color:         #7c5cfc;
+  --md-accent-fg-color--light:  #9f84fd;
+
+  /* Code block accent — warm purple tint on dark backgrounds */
+  --wtf-code-bg:                #1a1730;
+  --wtf-code-border:            #5e4be1;
+  --wtf-inline-code-bg:         #ede9ff;
+  --wtf-inline-code-color:      #4535b8;
+}
+
+[data-md-color-scheme="slate"] {
+  --wtf-inline-code-bg:         #2a2540;
+  --wtf-inline-code-color:      #b8a9fd;
+}
+
+/* ── Inline code ────────────────────────────────────────────────────────── */
+.md-typeset code:not([class]) {
+  background-color: var(--wtf-inline-code-bg);
+  color:            var(--wtf-inline-code-color);
+  padding:          0.1em 0.35em;
+  border-radius:    3px;
+  font-size:        0.85em;
+}
+
+/* ── Fenced code blocks ─────────────────────────────────────────────────── */
+.md-typeset .highlight pre,
+.md-typeset pre code {
+  border-left: 3px solid var(--wtf-code-border);
+}
+
+.md-typeset .highlight .filename {
+  background-color: var(--md-primary-fg-color);
+  color: #fff;
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  border-radius: 4px 4px 0 0;
+}
+
+/* ── Admonitions ────────────────────────────────────────────────────────── */
+
+/* note — blue-violet */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: #7c5cfc;
+}
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: rgba(124, 92, 252, 0.12);
+}
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: #7c5cfc;
+  -webkit-mask-image: var(--md-admonition-icon--note);
+          mask-image: var(--md-admonition-icon--note);
+}
+
+/* tip — emerald green */
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-color: #00c897;
+}
+.md-typeset .tip > .admonition-title,
+.md-typeset .tip > summary {
+  background-color: rgba(0, 200, 151, 0.12);
+}
+.md-typeset .tip > .admonition-title::before,
+.md-typeset .tip > summary::before {
+  background-color: #00c897;
+  -webkit-mask-image: var(--md-admonition-icon--tip);
+          mask-image: var(--md-admonition-icon--tip);
+}
+
+/* warning — amber */
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-color: #f4a600;
+}
+.md-typeset .warning > .admonition-title,
+.md-typeset .warning > summary {
+  background-color: rgba(244, 166, 0, 0.12);
+}
+.md-typeset .warning > .admonition-title::before,
+.md-typeset .warning > summary::before {
+  background-color: #f4a600;
+  -webkit-mask-image: var(--md-admonition-icon--warning);
+          mask-image: var(--md-admonition-icon--warning);
+}
+
+/* info — sky blue */
+.md-typeset .admonition.info,
+.md-typeset details.info {
+  border-color: #0096d6;
+}
+.md-typeset .info > .admonition-title,
+.md-typeset .info > summary {
+  background-color: rgba(0, 150, 214, 0.12);
+}
+.md-typeset .info > .admonition-title::before,
+.md-typeset .info > summary::before {
+  background-color: #0096d6;
+  -webkit-mask-image: var(--md-admonition-icon--info);
+          mask-image: var(--md-admonition-icon--info);
+}
+
+/* ── Grid cards ─────────────────────────────────────────────────────────── */
+.md-typeset .grid.cards > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+
+.md-typeset .grid.cards > ul > li {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+  padding: 1.2rem 1.4rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 3px 14px rgba(94, 75, 225, 0.15);
+}
+
+.md-typeset .grid.cards > ul > li > :first-child {
+  margin-top: 0;
+}
+
+.md-typeset .grid.cards > ul > li > :last-child {
+  margin-bottom: 0;
+}
+
+.md-typeset .grid.cards > ul > li hr {
+  border-color: var(--md-default-fg-color--lightest);
+  margin: 0.6rem 0;
+}
+
+/* ── Navigation ─────────────────────────────────────────────────────────── */
+.md-nav__link--active {
+  color: var(--md-accent-fg-color) !important;
+  font-weight: 600;
+}
+
+.md-nav__item--active > .md-nav__link {
+  color: var(--md-accent-fg-color) !important;
+}
+
+/* ── Definition lists (used for parameter docs) ─────────────────────────── */
+.md-typeset dl dt {
+  font-family: var(--md-code-font-family, "Roboto Mono", monospace);
+  font-size: 0.82em;
+  background: var(--wtf-inline-code-bg);
+  color: var(--wtf-inline-code-color);
+  padding: 0.15em 0.5em;
+  border-radius: 3px;
+  margin-bottom: 0.3em;
+  display: inline-block;
+}
+
+.md-typeset dl dd {
+  margin-left: 1.5rem;
+  margin-bottom: 0.8rem;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+.md-typeset table:not([class]) th {
+  background-color: var(--md-primary-fg-color);
+  color: #fff;
+}
+
+.md-typeset table:not([class]) tr:hover {
+  background-color: rgba(94, 75, 225, 0.05);
+}
+
+/* ── Header / hero ──────────────────────────────────────────────────────── */
+.md-header {
+  background-color: var(--md-primary-fg-color) !important;
+}
+
+/* ── Tabs (MkDocs content tabs) ─────────────────────────────────────────── */
+.md-typeset .tabbed-labels > label:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.md-typeset .tabbed-labels > label.tabbed-labels--linked:has(:checked) {
+  color: var(--md-accent-fg-color);
+  border-bottom-color: var(--md-accent-fg-color);
+}
+
+/* ── mkdocstrings API block ─────────────────────────────────────────────── */
+.doc-heading {
+  border-left: 4px solid var(--wtf-code-border);
+  padding-left: 0.6em;
+}
+
+.doc-label {
+  background-color: var(--md-primary-fg-color);
+  color: #fff;
+  border-radius: 3px;
+  font-size: 0.7em;
+  padding: 0.1em 0.45em;
+  vertical-align: middle;
+  margin-left: 0.4em;
+}
