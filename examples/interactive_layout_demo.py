@@ -63,19 +63,18 @@ class InteractiveDemoScreen(ExampleScreen):
     .controls-section {
         height: auto;
         background: $surface;
-        padding: 1 2;
+        padding: 0 2;
         margin-bottom: 1;
         border: solid $accent;
     }
 
     .control-group {
         height: auto;
-        padding: 1 0;
+        padding: 0;
     }
 
     .control-label {
         text-style: bold;
-        padding-bottom: 1;
     }
 
     RadioSet {

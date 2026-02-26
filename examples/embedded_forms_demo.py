@@ -66,30 +66,41 @@ class OrderForm(Form):
 
 
 class EmbeddedFormsDemoScreen(ExampleScreen):
-    """Screen with a single OrderForm rendered across panels and tabs."""
+    """Screen with a single OrderForm in a two-column layout.
+
+    Left column  — personal sub-form stacked above the addresses sub-form.
+    Right column — field-path lookup / inspector.
+    """
 
     CSS = """
     Screen {
         layout: vertical;
-        align: left top;
     }
 
-    #outer-scroll {
-        height: 1fr;
+    /* Two-column split that fills the available height */
+    #main-split {
         width: 100%;
+        height: 1fr;
+        layout: horizontal;
     }
 
-    #forms-row {
-        layout: horizontal;
-        height: auto;
-        padding: 1 1 0 1;
+    /* Left column — scrollable so tall form content isn't clipped */
+    #left-col {
+        width: 1fr;
+        height: 100%;
+    }
+
+    /* Right column — scrollable so the checker panel is always reachable */
+    #right-col {
+        width: 1fr;
+        height: 100%;
     }
 
     .form-panel {
-        width: 1fr;
+        width: 100%;
         height: auto;
         border: solid $primary;
-        margin: 0 1;
+        margin: 1 1;
         padding: 1 2;
     }
 
@@ -160,8 +171,10 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
         self.form = OrderForm()
         bf = self.form.bound_fields
 
-        with ScrollableContainer(id="outer-scroll"):
-            with Horizontal(id="forms-row"):
+        with Horizontal(id="main-split"):
+            # ── Left column ──────────────────────────────────────────────
+            # Personal sub-form stacked above the addresses sub-form.
+            with ScrollableContainer(id="left-col"):
                 with Vertical(classes="form-panel"):
                     yield Static("personal", classes="panel-title")
                     yield bf["name"].simple_layout()
@@ -178,24 +191,27 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
                             yield bf["shipping_city"].simple_layout()
                             yield bf["shipping_postcode"].simple_layout()
 
-            with Vertical(id="query-section"):
-                yield Static("Field Lookup", id="query-title")
-                yield Static(
-                    "Type a field name to inspect it.  Try qualified names "
-                    "(billing_street), unqualified (name), or ambiguous "
-                    "(street).",
-                    id="query-hint",
-                )
-                with Horizontal(id="query-row"):
-                    yield Input(
-                        placeholder="billing_street  /  name  /  street",
-                        id="query-input",
+            # ── Right column ─────────────────────────────────────────────
+            # Field-path lookup / inspector.
+            with ScrollableContainer(id="right-col"):
+                with Vertical(id="query-section"):
+                    yield Static("Field Lookup", id="query-title")
+                    yield Static(
+                        "Type a field name to inspect it.  Try qualified names "
+                        "(billing_street), unqualified (name), or ambiguous "
+                        "(street).",
+                        id="query-hint",
                     )
-                    yield Button("Look up", variant="primary", id="lookup-btn")
-                yield Static(
-                    "Results will appear here.",
-                    id="query-result",
-                )
+                    with Horizontal(id="query-row"):
+                        yield Input(
+                            placeholder="billing_street  /  name  /  street",
+                            id="query-input",
+                        )
+                        yield Button("Look up", variant="primary", id="lookup-btn")
+                    yield Static(
+                        "Results will appear here.",
+                        id="query-result",
+                    )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "lookup-btn":
