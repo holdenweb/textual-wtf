@@ -406,6 +406,12 @@ class TestFormTitle:
     def test_no_title(self):
         assert SimpleForm().title == ""
 
+    def test_title_kwarg_overrides_class_attr(self):
+        assert TitledForm(title="Override").title == "Override"
+
+    def test_title_kwarg_on_plain_form(self):
+        assert SimpleForm(title="Hello").title == "Hello"
+
 
 class TestFormLayoutClass:
     def test_default_none(self):
@@ -695,3 +701,96 @@ class TestEmbeddedFormInstance:
         form = F()  # all empty
         assert form.billing_street.validate() is False  # required → fails
         assert form.shipping_street.validate() is True  # optional → passes
+
+
+# ── Required cascade — class-attribute default ────────────────
+
+
+class TestRequiredClassAttr:
+    """Form.required class attribute is the lowest-priority cascade level."""
+
+    def test_class_attr_true_propagates(self):
+        """Fields with no explicit required inherit from the class attribute."""
+        class F(Form):
+            required = True
+            name = StringField("Name")
+            email = StringField("Email")
+
+        form = F()
+        assert form.name.required is True
+        assert form.email.required is True
+
+    def test_class_attr_false_propagates(self):
+        class F(Form):
+            required = False
+            name = StringField("Name")
+
+        form = F()
+        assert form.name.required is False
+
+    def test_field_explicit_wins_over_class_attr(self):
+        """An explicitly-set field required= overrides the class attribute."""
+        class F(Form):
+            required = False
+            name = StringField("Name", required=True)   # explicit
+            email = StringField("Email")                # no explicit
+
+        form = F()
+        assert form.name.required is True   # field-level explicit wins
+        assert form.email.required is False  # class attr applies
+
+    def test_instance_kwarg_beats_class_attr(self):
+        """Form(required=...) kwarg overrides the class attribute."""
+        class F(Form):
+            required = True   # class default: required
+            name = StringField("Name")
+
+        form = F(required=False)  # instance kwarg overrides
+        assert form.name.required is False
+
+    def test_class_attr_used_when_no_instance_kwarg(self):
+        """Class attr is used when the instance kwarg is absent."""
+        class F(Form):
+            required = True
+            name = StringField("Name")
+
+        form = F()  # no required kwarg
+        assert form.name.required is True
+
+    def test_class_attr_none_leaves_field_defaults(self):
+        """Subclasses that do not set required= keep field defaults unchanged."""
+        class F(Form):
+            name = StringField("Name", required=True)
+            email = StringField("Email")  # default False
+
+        form = F()
+        assert form.name.required is True
+        assert form.email.required is False
+
+    def test_class_attr_embedded_via_instance(self):
+        """Class attr cascade travels through Form instance embedding."""
+        class Addr(Form):
+            required = True
+            street = StringField("Street")
+            city = StringField("City")
+
+        class Order(Form):
+            billing = Addr()            # inherits required=True from class attr
+            shipping = Addr(required=False)  # kwarg overrides
+
+        form = Order()
+        assert form.billing_street.required is True
+        assert form.billing_city.required is True
+        assert form.shipping_street.required is False
+        assert form.shipping_city.required is False
+
+    def test_class_attr_validates_correctly(self):
+        """Validation reflects the class-attribute cascade."""
+        class F(Form):
+            required = True
+            name = StringField("Name")
+
+        form = F()
+        assert form.name.validate() is False   # empty → required fails
+        form.name.value = "Alice"
+        assert form.name.validate() is True

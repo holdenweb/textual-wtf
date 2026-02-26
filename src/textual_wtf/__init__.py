@@ -19,6 +19,7 @@ from .fields import (
 )
 from .forms import BaseForm, Form
 from .layouts import ControllerAwareLayout, DefaultFormLayout, FormLayout
+from .tabbed_form import TabbedForm
 from .types import HelpStyle, LabelStyle
 from .validators import (
     EmailValidator,
@@ -46,6 +47,7 @@ __all__ = [
     # Forms
     "BaseForm",
     "Form",
+    "TabbedForm",
     # Layouts
     "FormLayout",
     "ControllerAwareLayout",

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "examples (TUI)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "examples"],
+      "port": 0
+    },
+    {
+      "name": "examples (browser via textual serve)",
+      "runtimeExecutable": "textual",
+      "runtimeArgs": ["serve", "examples/__main__.py"],
+      "port": 8000
+    }
+  ]
+}

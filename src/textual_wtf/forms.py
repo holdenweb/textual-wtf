@@ -107,6 +107,7 @@ class BaseForm(metaclass=FormMetaclass):
     layout_class: type[FormLayout] | None = None
     label_style: LabelStyle = "above"
     help_style: HelpStyle = "below"
+    required: bool | None = None
     title: str = ""
 
     # ── Messages ────────────────────────────────────────────────
@@ -135,6 +136,7 @@ class BaseForm(metaclass=FormMetaclass):
         label_style: LabelStyle | None = None,
         help_style: HelpStyle | None = None,
         required: bool | None = None,
+        title: str | None = None,
     ) -> None:
         self._data = data or {}
         self._layout_class = layout_class or self.__class__.layout_class
@@ -144,9 +146,15 @@ class BaseForm(metaclass=FormMetaclass):
         self._instance_help_style = (
             help_style if help_style is not None else self.__class__.help_style
         )
+        # Effective required: kwarg wins over class attribute.
         # Stored so the metaclass can read it when this instance is used as
         # a class-level embedded-form assignment (e.g. shipping = AddressForm(required=False)).
-        self._instance_required: bool | None = required
+        self._instance_required: bool | None = (
+            required if required is not None else self.__class__.required
+        )
+        # Instance title: kwarg wins over class attribute.
+        if title is not None:
+            self.title = title
         # Flag set by add_error() during clean_form(); reset at each clean() call
         self._clean_form_errored: bool = False
 
@@ -159,8 +167,8 @@ class BaseForm(metaclass=FormMetaclass):
             # Apply form-instance-level required override for direct (non-embedded) use.
             # For embedded instances the metaclass already baked the override into
             # the cloned field definitions, so this is a no-op in that path.
-            if required is not None:
-                field = field._with_required(required)
+            if self._instance_required is not None:
+                field = field._with_required(self._instance_required)
             bf = field.bind(self, name, self._data)
             # Apply form-level styles where the field didn't explicitly set them
             if not field._label_style_explicit:

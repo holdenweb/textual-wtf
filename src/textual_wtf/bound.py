@@ -7,7 +7,7 @@ from typing import Any, TYPE_CHECKING
 from .controller import FieldController
 from .exceptions import FormError, ValidationError
 from .types import HelpStyle, LabelStyle
-from .validators import FunctionValidator, Validator
+from .validators import FunctionValidator, Required, Validator
 
 if TYPE_CHECKING:
     from textual.widget import Widget
@@ -137,12 +137,32 @@ class BoundField:
 
     # ── Configuration ─────────────────────────────────────────────
 
+    def _apply_required(self, required: bool) -> None:
+        """Force-override the required state of this bound field.
+
+        Unlike ``Field._with_required()``, this always applies regardless of
+        whether the original field had ``required`` set explicitly.  It clones
+        the field, updates the controller's reference, and is the correct path
+        for render-level ``required=`` overrides (highest priority in the cascade).
+        """
+        import copy
+
+        clone = copy.copy(self._field)
+        clone.required = required
+        clone.validators = [v for v in self._field.validators if not isinstance(v, Required)]
+        if required:
+            clone.validators.insert(0, Required())
+        clone._required_explicitly_set = True
+        self._field = clone
+        self.controller._field = clone
+
     def _configure(
         self,
         *,
         label_style: LabelStyle | None = None,
         help_style: HelpStyle | None = None,
         disabled: bool | None = None,
+        required: bool | None = None,
         **widget_kwargs: Any,
     ) -> None:
         """Apply per-render style and widget overrides."""
@@ -152,6 +172,8 @@ class BoundField:
             self._help_style = help_style
         if disabled is not None:
             self.disabled = disabled
+        if required is not None:
+            self._apply_required(required)
         self._widget_kwargs.update(widget_kwargs)
 
     def _check_not_rendered(self) -> None:
@@ -169,6 +191,7 @@ class BoundField:
         label_style: LabelStyle | None = None,
         help_style: HelpStyle | None = None,
         disabled: bool | None = None,
+        required: bool | None = None,
         **widget_kwargs: Any,
     ) -> Widget:
         """Return the raw inner widget (Input / Checkbox / Select / TextArea).
@@ -186,6 +209,7 @@ class BoundField:
             label_style=label_style,
             help_style=help_style,
             disabled=disabled,
+            required=required,
             **widget_kwargs,
         )
         widget = self._build_inner_widget()
@@ -198,6 +222,7 @@ class BoundField:
         label_style: LabelStyle | None = None,
         help_style: HelpStyle | None = None,
         disabled: bool | None = None,
+        required: bool | None = None,
         renderer: Any | None = None,
         **widget_kwargs: Any,
     ) -> Any:  # returns FieldWidget, typed as Any to avoid circular import
@@ -217,6 +242,7 @@ class BoundField:
             label_style=label_style,
             help_style=help_style,
             disabled=disabled,
+            required=required,
             **widget_kwargs,
         )
         return FieldWidget(bound_field=self, renderer=renderer)

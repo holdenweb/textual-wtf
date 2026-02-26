@@ -27,9 +27,12 @@ from textual_wtf.exceptions import AmbiguousFieldError
 class AddressForm(Form):
     """Reusable postal address form.
 
-    Required-ness is intentionally left unset at the field level so that
-    it can be controlled per-embedding via a Form *instance* assignment.
+    ``required = True`` is the class-level default so that billing addresses
+    are required by default.  Embeddings can override this via a ``required=``
+    kwarg on the Form instance (e.g. ``shipping = AddressForm(required=False)``).
     """
+
+    required = True
 
     street = StringField(
         label="Street",
@@ -70,8 +73,8 @@ class OrderForm(Form):
         help_text="Contact email address",
     )
 
-    billing = AddressForm(required=True)   # all billing fields required
-    shipping = AddressForm(required=False)  # all shipping fields optional
+    billing = AddressForm()                # inherits required=True from class attr
+    shipping = AddressForm(required=False)  # overrides to optional
 
 
 class EmbeddedFormsDemoScreen(ExampleScreen):
