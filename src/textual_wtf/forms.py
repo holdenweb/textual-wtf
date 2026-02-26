@@ -17,22 +17,15 @@ if TYPE_CHECKING:
     from .layouts import FormLayout
 
 
-class EmbeddedForm:
-    """Marker object returned by Form.embed().
-
-    Carries the source form class and prefix for expansion by FormMetaclass.
-    """
-
-    def __init__(self, form_class: type, prefix: str, title: str = "") -> None:
-        self.form_class = form_class
-        self.prefix = prefix
-        self.title = title
-
-
 class FormMetaclass(type):
     """Metaclass that extracts Field definitions from the class body.
 
-    Handles EmbeddedForm expansion with prefix-based name mangling.
+    Handles direct Form-subclass assignment, expanding the inner form's
+    fields into the parent with the variable name as an underscore prefix::
+
+        class OrderForm(Form):
+            billing = AddressForm   # → billing_street, billing_city, …
+            shipping = AddressForm  # → shipping_street, shipping_city, …
     """
 
     def __new__(
@@ -49,7 +42,7 @@ class FormMetaclass(type):
             if hasattr(base, "_field_definitions"):
                 field_definitions.update(base._field_definitions)
 
-        # Process namespace for Field and EmbeddedForm instances
+        # Process namespace for Field instances and embedded Form subclasses
         to_remove = []
         for key, value in namespace.items():
             if isinstance(value, Field):
@@ -58,20 +51,6 @@ class FormMetaclass(type):
                         f"Field name {key!r} conflicts with inherited field."
                     )
                 field_definitions[key] = value
-                to_remove.append(key)
-            elif isinstance(value, EmbeddedForm):
-                embedded = value
-                source_defs = getattr(
-                    embedded.form_class, "_field_definitions", {}
-                )
-                for field_name, field_obj in source_defs.items():
-                    prefixed_name = f"{embedded.prefix}_{field_name}"
-                    if prefixed_name in field_definitions:
-                        raise FormError(
-                            f"Embedded field {prefixed_name!r} conflicts "
-                            f"with existing field."
-                        )
-                    field_definitions[prefixed_name] = field_obj
                 to_remove.append(key)
             elif (
                 isinstance(value, type)
@@ -144,6 +123,8 @@ class BaseForm(metaclass=FormMetaclass):
         self._instance_help_style = (
             help_style if help_style is not None else self.__class__.help_style
         )
+        # Flag set by add_error() during clean_form(); reset at each clean() call
+        self._clean_form_errored: bool = False
 
         # Bind all fields
         self._bound_fields: OrderedDict[str, BoundField] = OrderedDict()
@@ -195,7 +176,7 @@ class BaseForm(metaclass=FormMetaclass):
         )
 
     def get_field(self, name: str) -> BoundField:
-        """Get a bound field by name. Kept for backward compatibility."""
+        """Get a bound field by name."""
         try:
             return getattr(self, name)
         except AttributeError:
@@ -206,7 +187,7 @@ class BaseForm(metaclass=FormMetaclass):
     # ── Validation and cleaning ─────────────────────────────────
 
     def validate(self) -> bool:
-        """Validate all fields. Returns True only if all fields are valid."""
+        """Validate all fields.  Returns True only if all fields are valid."""
         all_valid = True
         for bf in self._bound_fields.values():
             if not bf.validate():
@@ -220,22 +201,58 @@ class BaseForm(metaclass=FormMetaclass):
     def clean(self) -> bool:
         """Full form-level cleaning pipeline.
 
-        Calls validate() to check each field. If all pass, calls
-        clean_form() for cross-field checks. Returns True if the
-        entire form is valid.
+        Calls ``validate()`` to check each field.  If all pass, calls
+        ``clean_form()`` for cross-field checks.  Any calls to
+        ``add_error()`` inside ``clean_form()`` also cause ``clean()`` to
+        return ``False``, even if ``clean_form()`` returns ``True``.
+
+        After ``clean_form()`` completes, all field widgets are notified so
+        that any errors set via the backward-compatible direct-assignment
+        style are reflected in the UI.
         """
         if not self.validate():
             return False
-        return self.clean_form()
+        self._clean_form_errored = False
+        result = self.clean_form()
+        # Notify all FieldWidgets so that errors set inside clean_form()
+        # (via add_error or direct assignment) propagate to the UI.
+        self._sync_field_error_listeners()
+        return result and not self._clean_form_errored
 
     def clean_form(self) -> bool:
-        """Override this for cross-field validation.
+        """Override for cross-field validation.
 
-        Called only after all individual fields validate successfully.
-        Return True if valid, False otherwise. Override should populate
-        appropriate field errors if returning False.
+        Called only after all individual fields pass ``validate()``.
+        Return ``True`` if valid, ``False`` otherwise.
+
+        Use ``self.add_error(field_name, message)`` to attach errors to
+        specific fields — this is preferred over direct attribute assignment.
         """
         return True
+
+    def add_error(self, field_name: str, message: str) -> None:
+        """Attach a cross-field error to a named field.
+
+        Intended for use inside ``clean_form()``.  The error is visible in
+        the field's error label when the UI is next refreshed (which happens
+        automatically at the end of ``clean()``).
+
+        Raises ``FormError`` if ``field_name`` does not exist.
+        """
+        bf = self._bound_fields.get(field_name)
+        if bf is None:
+            raise FormError(
+                f"{self.__class__.__name__!r} has no field {field_name!r}."
+            )
+        bf.controller.errors.append(message)
+        bf.controller.has_error = True
+        bf.controller.error_messages = list(bf.controller.errors)
+        self._clean_form_errored = True
+
+    def _sync_field_error_listeners(self) -> None:
+        """Push current error state from every controller to its listeners."""
+        for bf in self._bound_fields.values():
+            bf.controller._notify_errors()
 
     # ── Data access ─────────────────────────────────────────────
 
@@ -259,13 +276,6 @@ class BaseForm(metaclass=FormMetaclass):
 
         layout_cls = self._layout_class or DefaultFormLayout
         return layout_cls(form=self, id=id)
-
-    # ── Embedding ───────────────────────────────────────────────
-
-    @classmethod
-    def embed(cls, prefix: str, title: str = "") -> EmbeddedForm:
-        """Return an EmbeddedForm marker for use inside another form class body."""
-        return EmbeddedForm(form_class=cls, prefix=prefix, title=title)
 
 
 class Form(BaseForm):

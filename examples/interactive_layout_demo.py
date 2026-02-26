@@ -188,9 +188,6 @@ class InteractiveDemoScreen(ExampleScreen):
         super().on_mount()
         self._label_style = "placeholder"
         self._help_style = "below"
-        # Set initial radio selections to match defaults
-        self.query_one("#label-placeholder", RadioButton).value = True
-        self.query_one("#help-below", RadioButton).value = True
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         """Handle radio button changes - rebuild form with new options."""

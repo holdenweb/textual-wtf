@@ -4,7 +4,7 @@ import pytest
 
 from textual_wtf.exceptions import AmbiguousFieldError, FormError, ValidationError
 from textual_wtf.fields import IntegerField, StringField, TextField
-from textual_wtf.forms import BaseForm, EmbeddedForm, Form
+from textual_wtf.forms import BaseForm, Form
 
 
 # ── Test forms ──────────────────────────────────────────────────
@@ -22,8 +22,9 @@ class AddressForm(Form):
 
 
 class OrderForm(Form):
-    billing = AddressForm.embed(prefix="billing")
-    shipping = AddressForm.embed(prefix="shipping")
+    """Uses direct Form-subclass assignment (the only embedding mechanism)."""
+    billing = AddressForm
+    shipping = AddressForm
     notes = TextField("Notes")
 
 
@@ -64,19 +65,7 @@ class TestFormMetaclass:
 
             class BadForm(Form):
                 billing_street = StringField("Street")
-                billing = AddressForm.embed(prefix="billing")
-
-    def test_embed_returns_embedded_form(self):
-        marker = AddressForm.embed(prefix="test")
-        assert isinstance(marker, EmbeddedForm)
-        assert marker.form_class is AddressForm
-        assert marker.prefix == "test"
-
-    def test_embed_title(self):
-        marker = AddressForm.embed(prefix="test", title="Test Addr")
-        assert marker.title == "Test Addr"
-
-    # ── Direct Form class assignment (auto-embed) ──
+                billing = AddressForm
 
     def test_direct_class_assignment_expands_fields(self):
         class DirectOrderForm(Form):
@@ -119,7 +108,6 @@ class TestFormMetaclass:
             addr = AddressForm
 
         form = SingleEmbedForm()
-        # Unqualified access works when there's no ambiguity
         assert form.street.name == "addr_street"
 
     def test_direct_class_assignment_ambiguous_raises(self):
@@ -213,7 +201,6 @@ class TestFormValidation:
 
     def test_is_valid_alias(self):
         form = SimpleForm(data={"name": "Alice"})
-        # Both should produce the same result
         assert form.is_valid() is True
 
     def test_populates_errors(self):
@@ -302,6 +289,55 @@ class TestFormClean:
 
         form = CrossFieldForm(data={"password": "abc", "confirm": "abc"})
         assert form.clean() is True
+
+
+# ── add_error ───────────────────────────────────────────────────
+
+
+class TestAddError:
+    def test_add_error_marks_field(self):
+        class CrossFieldForm(Form):
+            password = StringField("Password", required=True)
+            confirm = StringField("Confirm", required=True)
+
+            def clean_form(self):
+                if self.password.value != self.confirm.value:
+                    self.add_error("confirm", "Passwords do not match.")
+                return True  # still returns True; add_error sets the flag
+
+        form = CrossFieldForm(data={"password": "abc", "confirm": "xyz"})
+        assert form.clean() is False
+        assert form.confirm.has_error is True
+        assert "Passwords do not match." in form.confirm.errors
+
+    def test_add_error_unknown_field_raises(self):
+        form = SimpleForm(data={"name": "Alice"})
+        with pytest.raises(FormError, match="no field"):
+            form.add_error("nonexistent", "oops")
+
+    def test_add_error_multiple_messages(self):
+        class MultiErrorForm(Form):
+            x = StringField("X", required=True)
+
+            def clean_form(self):
+                self.add_error("x", "First problem.")
+                self.add_error("x", "Second problem.")
+                return True
+
+        form = MultiErrorForm(data={"x": "hello"})
+        assert form.clean() is False
+        assert len(form.x.errors) == 2
+
+    def test_add_error_clean_returns_false_even_if_clean_form_returns_true(self):
+        class F(Form):
+            name = StringField("Name", required=True)
+
+            def clean_form(self):
+                self.add_error("name", "Nope.")
+                return True
+
+        form = F(data={"name": "Alice"})
+        assert form.clean() is False
 
 
 # ── Embedded form access ────────────────────────────────────────

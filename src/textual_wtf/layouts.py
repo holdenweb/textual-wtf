@@ -6,20 +6,22 @@ from typing import Any, TYPE_CHECKING
 
 from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Button, Label
+from textual.widgets import Button, Checkbox, Input, Label, Select, TextArea
 
+from .field_widget import FieldWidget
 from .forms import BaseForm
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
+
+    from .bound import BoundField
 
 
 class FormLayout(VerticalScroll):
     """Base class for form renderers.
 
     Subclass and override compose() to create custom layouts.
-    The base class handles button events, keyboard shortcuts,
-    and duplicate-field protection.
+    The base class handles button events and keyboard shortcuts.
     """
 
     BINDINGS = [
@@ -72,10 +74,70 @@ class FormLayout(VerticalScroll):
         )
 
 
-class DefaultFormLayout(FormLayout):
+class ControllerAwareLayout(FormLayout):
+    """FormLayout mixin that routes widget events to FieldControllers.
+
+    When a form is composed with raw inner widgets (via ``BoundField.__call__``
+    rather than ``BoundField.simple_layout``), those widgets are not inside a
+    ``FieldWidget`` that would handle events for them.  This mixin catches the
+    relevant Textual events and routes them to the appropriate
+    ``FieldController`` based on the ``._field_controller`` attribute stamped
+    on each inner widget by ``BoundField.__call__``.
+
+    Events that originate from *inside* a ``FieldWidget`` are ignored here
+    (the ``FieldWidget`` handles them directly).
+    """
+
+    def _find_raw_controller(self, widget: Any) -> Any | None:
+        """Return the FieldController for a raw widget not inside a FieldWidget.
+
+        Returns ``None`` if the widget has no controller, or if it lives inside
+        a ``FieldWidget`` that already handles its events.
+        """
+        ctrl = getattr(widget, "_field_controller", None)
+        if ctrl is None:
+            return None
+        # Walk up the DOM; if we find a FieldWidget before reaching self,
+        # the event is already handled.
+        parent = widget.parent
+        while parent is not None and parent is not self:
+            if isinstance(parent, FieldWidget):
+                return None
+            parent = parent.parent
+        return ctrl
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        ctrl = self._find_raw_controller(event.control)
+        if ctrl is not None:
+            ctrl.handle_widget_input(event.value, "change")
+
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        ctrl = self._find_raw_controller(event.control)
+        if ctrl is not None:
+            ctrl.handle_widget_input(event.value, "change")
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        ctrl = self._find_raw_controller(event.control)
+        if ctrl is not None:
+            value = event.value if event.value is not Select.BLANK else None
+            ctrl.handle_widget_input(value, "change")
+
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        ctrl = self._find_raw_controller(event.control)
+        if ctrl is not None:
+            ctrl.handle_widget_input(event.control.text, "change")
+
+    def on_descendant_blur(self, event: Any) -> None:
+        ctrl = self._find_raw_controller(event.widget)
+        if ctrl is not None:
+            ctrl.validate_for("blur")
+
+
+class DefaultFormLayout(ControllerAwareLayout):
     """Renders all fields in declaration order with default styling.
 
     Adds a title bar (if the form has a title) and Submit/Cancel buttons.
+    Each field is rendered via ``BoundField.simple_layout()``.
     """
 
     DEFAULT_CSS = """
@@ -101,8 +163,7 @@ class DefaultFormLayout(FormLayout):
 
         for _name, bf in self.form.bound_fields.items():
             if not bf._rendered:
-                bf._mark_rendered()
-            yield bf
+                yield bf.simple_layout()
 
         with Horizontal(id="buttons"):
             yield Button("Submit", id="submit", variant="primary")

@@ -164,19 +164,19 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
             with Horizontal(id="forms-row"):
                 with Vertical(classes="form-panel"):
                     yield Static("personal", classes="panel-title")
-                    yield bf["name"]
-                    yield bf["email"]
+                    yield bf["name"].simple_layout()
+                    yield bf["email"].simple_layout()
                 with Vertical(classes="form-panel"):
                     yield Static("addresses", classes="panel-title")
                     with TabbedContent():
                         with TabPane("Billing", id="billing-tab"):
-                            yield bf["billing_street"]
-                            yield bf["billing_city"]
-                            yield bf["billing_postcode"]
+                            yield bf["billing_street"].simple_layout()
+                            yield bf["billing_city"].simple_layout()
+                            yield bf["billing_postcode"].simple_layout()
                         with TabPane("Shipping", id="shipping-tab"):
-                            yield bf["shipping_street"]
-                            yield bf["shipping_city"]
-                            yield bf["shipping_postcode"]
+                            yield bf["shipping_street"].simple_layout()
+                            yield bf["shipping_city"].simple_layout()
+                            yield bf["shipping_postcode"].simple_layout()
 
             with Vertical(id="query-section"):
                 yield Static("Field Lookup", id="query-title")

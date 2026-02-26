@@ -83,6 +83,26 @@ class TestFieldBase:
         assert f2._help_style_explicit is True
 
 
+class TestRequiredAsValidator:
+    def test_required_true_prepends_required_validator(self):
+        from textual_wtf.validators import Required
+        f = StringField("Name", required=True)
+        assert isinstance(f.validators[0], Required)
+
+    def test_required_false_no_required_validator(self):
+        from textual_wtf.validators import Required
+        f = StringField("Name", required=False)
+        assert not any(isinstance(v, Required) for v in f.validators)
+
+    def test_required_with_other_validators_order(self):
+        from textual_wtf.validators import Required
+        v = MinLength(3)
+        f = StringField("Name", required=True, validators=[v])
+        # Required first, then user validators
+        assert isinstance(f.validators[0], Required)
+        assert f.validators[1] is v
+
+
 class TestStringField:
     def test_default_widget_class(self):
         assert StringField("Name").widget_class is FormInput
@@ -101,6 +121,7 @@ class TestStringField:
         assert any(isinstance(v, MaxLength) for v in f.validators)
 
     def test_no_length_kwargs_no_extra_validators(self):
+        # No required=True and no length kwargs → empty validator list
         assert StringField("Name").validators == []
 
 

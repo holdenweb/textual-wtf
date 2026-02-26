@@ -6,7 +6,15 @@ from typing import Any, Callable, TYPE_CHECKING
 
 from .exceptions import FieldError, ValidationError
 from .types import HelpStyle, LabelStyle
-from .validators import FunctionValidator, MaxLength, MaxValue, MinLength, MinValue, Validator
+from .validators import (
+    FunctionValidator,
+    MaxLength,
+    MaxValue,
+    MinLength,
+    MinValue,
+    Required,
+    Validator,
+)
 from .widgets import FormCheckbox, FormInput, FormSelect, FormTextArea
 
 if TYPE_CHECKING:
@@ -45,6 +53,10 @@ class Field:
             v if isinstance(v, Validator) else FunctionValidator(v)
             for v in validators
         ]
+        # required=True is implemented as the first validator so the pipeline
+        # is fully unified — no special-case code in FieldController.
+        if required:
+            self.validators.insert(0, Required())
         self.help_text = help_text
         self._label_style_explicit = label_style is not None
         self._help_style_explicit = help_style is not None

@@ -10,6 +10,7 @@ from textual_wtf import (
     BoundField,
     ChoiceField,
     DefaultFormLayout,
+    FieldWidget,
     Form,
     IntegerField,
     StringField,
@@ -49,11 +50,8 @@ class CrossFieldForm(Form):
 
     def clean_form(self):
         if self.password.value != self.confirm.value:
-            self.confirm.errors = ["Passwords do not match"]
-            self.confirm.has_error = True
-            self.confirm.error_messages = ["Passwords do not match"]
-            return False
-        return True
+            self.add_error("confirm", "Passwords do not match")
+        return True  # add_error sets the flag; clean() returns False automatically
 
 
 # ── Test apps ───────────────────────────────────────────────────
@@ -132,10 +130,10 @@ class TestFormMounting:
         async with SimpleFormApp().run_test() as pilot:
             assert pilot.app.query_one("#cancel", Button) is not None
 
-    async def test_bound_fields_rendered(self):
+    async def test_field_widgets_rendered(self):
         async with SimpleFormApp().run_test() as pilot:
-            bfs = list(pilot.app.query(BoundField))
-            assert len(bfs) == 2
+            fws = list(pilot.app.query(FieldWidget))
+            assert len(fws) == 2
 
     async def test_prefilled_values(self):
         async with PrefilledApp().run_test() as pilot:

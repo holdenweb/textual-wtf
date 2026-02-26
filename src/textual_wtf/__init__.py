@@ -1,12 +1,14 @@
 """textual-wtf — Declarative forms library for Textual TUI applications."""
 
 from .bound import BoundField
+from .controller import FieldController
 from .exceptions import (
     AmbiguousFieldError,
     FieldError,
     FormError,
     ValidationError,
 )
+from .field_widget import FieldWidget
 from .fields import (
     BooleanField,
     ChoiceField,
@@ -15,8 +17,8 @@ from .fields import (
     StringField,
     TextField,
 )
-from .forms import BaseForm, EmbeddedForm, Form
-from .layouts import DefaultFormLayout, FormLayout
+from .forms import BaseForm, Form
+from .layouts import ControllerAwareLayout, DefaultFormLayout, FormLayout
 from .types import HelpStyle, LabelStyle
 from .validators import (
     EmailValidator,
@@ -30,18 +32,25 @@ from .validators import (
 from .widgets import FormCheckbox, FormInput, FormSelect, FormTextArea
 
 __all__ = [
+    # Field declarations
     "Field",
     "StringField",
     "IntegerField",
     "BooleanField",
     "ChoiceField",
     "TextField",
+    # Runtime
     "BoundField",
+    "FieldController",
+    "FieldWidget",
+    # Forms
     "BaseForm",
     "Form",
-    "EmbeddedForm",
+    # Layouts
     "FormLayout",
+    "ControllerAwareLayout",
     "DefaultFormLayout",
+    # Validators
     "Validator",
     "Required",
     "MinLength",
@@ -49,14 +58,17 @@ __all__ = [
     "MinValue",
     "MaxValue",
     "EmailValidator",
+    # Widgets
     "FormInput",
     "FormCheckbox",
     "FormSelect",
     "FormTextArea",
+    # Exceptions
     "ValidationError",
     "FieldError",
     "FormError",
     "AmbiguousFieldError",
+    # Types
     "LabelStyle",
     "HelpStyle",
 ]

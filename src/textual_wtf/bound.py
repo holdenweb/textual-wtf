@@ -1,73 +1,29 @@
-"""BoundField — mutable runtime state for one field within one form instance.
-
-Also a Textual Container widget that composes the label, inner input
-widget, help text, and error display.
-"""
+"""BoundField — non-widget runtime adapter for one field within one form instance."""
 
 from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
-from textual import events
-from textual.containers import Container, Horizontal, Vertical
-from textual.css.query import NoMatches
-from textual.reactive import reactive
-from textual.widget import Widget
-from textual.widgets import Checkbox, Input, Label, Select, Static, TextArea
-
+from .controller import FieldController
 from .exceptions import FormError, ValidationError
 from .types import HelpStyle, LabelStyle
-from .validators import FunctionValidator, Required, Validator
-from .widgets import FormCheckbox, FormInput, FormSelect, FormTextArea
+from .validators import FunctionValidator, Validator
 
 if TYPE_CHECKING:
-    from textual.app import ComposeResult
+    from textual.widget import Widget
 
     from .fields import Field
     from .forms import BaseForm
 
 
-class BoundField(Container):
-    """Mutable runtime state for one field within one form instance.
+class BoundField:
+    """Mutable runtime adapter for one field within one form instance.
 
-    Created by Field.bind() during BaseForm.__init__(). Not instantiated
-    directly.
+    Created by ``Field.bind()`` during ``BaseForm.__init__``.  Not a Textual
+    widget — it is a plain Python object that owns a :class:`FieldController`
+    and knows how to produce either a raw inner widget (``__call__``) or a
+    fully-composed ``FieldWidget`` (``simple_layout``).
     """
-
-    DEFAULT_CSS = """
-    BoundField {
-        height: auto;
-        margin-bottom: 1;
-    }
-    BoundField .field-beside {
-        height: auto;
-    }
-    BoundField .field-input-col {
-        height: auto;
-        width: 1fr;
-    }
-    BoundField .field-label {
-        margin-bottom: 0;
-    }
-    BoundField .field-help {
-        color: $text-muted;
-        margin-top: 0;
-        padding-left: 1;
-    }
-    BoundField .field-error {
-        color: $error;
-        display: none;
-        margin-top: 0;
-        padding-left: 1;
-    }
-    BoundField .field-error.has-error {
-        display: block;
-    }
-    """
-
-    value: reactive[Any] = reactive(None, init=False)
-    has_error: reactive[bool] = reactive(False)
-    error_messages: reactive[list[str]] = reactive(list, init=False)
 
     def __init__(
         self,
@@ -76,43 +32,23 @@ class BoundField(Container):
         name: str,
         data: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__()
         self._field = field
         self._form = form
         self._name = name
-        self._rendered = False
 
-        # Mutable per-instance state
-        self.disabled = field.disabled
-        self.errors: list[str] = []
-        self.is_dirty = False
+        # Controller owns all mutable state / validation logic
+        self.controller = FieldController(field, form, name, data or {})
 
-        # Style overrides (can be changed via __call__)
+        # Per-render style overrides
         self._label_style: LabelStyle = field.label_style
         self._help_style: HelpStyle = field.help_style
-
-        # Widget kwargs accumulated from Field + __call__
         self._widget_kwargs: dict[str, Any] = dict(field.widget_kwargs)
+        self.disabled: bool = field.disabled
 
-        # Initial value: data dict takes precedence over field default.
-        # Apply to_python() immediately so the programmer always sees a
-        # correctly-typed value; fall back to the raw value on error so
-        # that validate() can still surface the coercion failure later.
-        data = data or {}
-        raw = data[name] if name in data else field.initial
-        try:
-            self._initial = field.to_python(raw)
-        except ValidationError:
-            self._initial = raw
+        # Render guard — set to True by __call__ or simple_layout
+        self._rendered: bool = False
 
-        # Set reactive values without triggering watchers
-        self.set_reactive(BoundField.value, self._initial)
-        self.set_reactive(BoundField.error_messages, [])
-
-        # Inner widget reference (populated during compose)
-        self._inner_widget: Widget | None = None
-
-    # ── Properties delegated to Field (read-only) ───────────────
+    # ── Properties delegated to Field (read-only) ────────────────
 
     @property
     def field(self) -> Field:
@@ -154,7 +90,78 @@ class BoundField(Container):
     def validators(self) -> list:
         return self._field.validators
 
-    # ── __call__ — configure for rendering ──────────────────────
+    # ── Value / error state (proxied to controller) ───────────────
+
+    @property
+    def value(self) -> Any:
+        return self.controller.value
+
+    @value.setter
+    def value(self, new_value: Any) -> None:
+        self.controller.value = new_value
+
+    @property
+    def is_dirty(self) -> bool:
+        return self.controller.is_dirty
+
+    @is_dirty.setter
+    def is_dirty(self, v: bool) -> None:
+        self.controller.is_dirty = v
+
+    @property
+    def errors(self) -> list[str]:
+        return self.controller.errors
+
+    @errors.setter
+    def errors(self, v: list[str]) -> None:
+        """Backward-compatible direct error assignment (use form.add_error() for new code)."""
+        self.controller.errors = list(v)
+
+    @property
+    def has_error(self) -> bool:
+        return self.controller.has_error
+
+    @has_error.setter
+    def has_error(self, v: bool) -> None:
+        """Backward-compatible direct assignment (use form.add_error() for new code)."""
+        self.controller.has_error = v
+
+    @property
+    def error_messages(self) -> list[str]:
+        return self.controller.error_messages
+
+    @error_messages.setter
+    def error_messages(self, v: list[str]) -> None:
+        """Backward-compatible direct assignment (use form.add_error() for new code)."""
+        self.controller.error_messages = list(v)
+
+    # ── Configuration ─────────────────────────────────────────────
+
+    def _configure(
+        self,
+        *,
+        label_style: LabelStyle | None = None,
+        help_style: HelpStyle | None = None,
+        disabled: bool | None = None,
+        **widget_kwargs: Any,
+    ) -> None:
+        """Apply per-render style and widget overrides."""
+        if label_style is not None:
+            self._label_style = label_style
+        if help_style is not None:
+            self._help_style = help_style
+        if disabled is not None:
+            self.disabled = disabled
+        self._widget_kwargs.update(widget_kwargs)
+
+    def _check_not_rendered(self) -> None:
+        if self._rendered:
+            raise FormError(
+                f"Field {self._name!r} has already been yielded in this layout."
+            )
+        self._rendered = True
+
+    # ── Public rendering API ──────────────────────────────────────
 
     def __call__(
         self,
@@ -162,181 +169,98 @@ class BoundField(Container):
         label_style: LabelStyle | None = None,
         help_style: HelpStyle | None = None,
         disabled: bool | None = None,
-        validators: list | None = None,
         **widget_kwargs: Any,
-    ) -> BoundField:
-        """Configure this BoundField for rendering and return self.
+    ) -> Widget:
+        """Return the raw inner widget (Input / Checkbox / Select / TextArea).
 
-        Any keyword argument here takes precedence over the Field
-        declaration. widget_kwargs merge with (and override) existing ones.
+        The returned widget has ``._field_controller`` stamped on it so that
+        a :class:`~textual_wtf.ControllerAwareLayout` ancestor can route
+        Textual widget events back to the controller.
+
+        Call this when you want full layout freedom — place the widget inside
+        any Textual container you like.  Use ``simple_layout()`` when you
+        want the bundled label + input + help + error chrome.
         """
-        if self._rendered:
-            raise FormError(
-                f"Field {self._name!r} has already been yielded in this layout."
-            )
-        self._rendered = True
+        self._check_not_rendered()
+        self._configure(
+            label_style=label_style,
+            help_style=help_style,
+            disabled=disabled,
+            **widget_kwargs,
+        )
+        widget = self._build_inner_widget()
+        widget._field_controller = self.controller  # type: ignore[attr-defined]
+        return widget
 
-        if label_style is not None:
-            self._label_style = label_style
-        if help_style is not None:
-            self._help_style = help_style
-        if disabled is not None:
-            self.disabled = disabled
-        if validators is not None:
-            self._field.validators = [
-                v if isinstance(v, Validator) else FunctionValidator(v)
-                for v in validators
-            ]
+    def simple_layout(
+        self,
+        *,
+        label_style: LabelStyle | None = None,
+        help_style: HelpStyle | None = None,
+        disabled: bool | None = None,
+        renderer: Any | None = None,
+        **widget_kwargs: Any,
+    ) -> Any:  # returns FieldWidget, typed as Any to avoid circular import
+        """Return a :class:`~textual_wtf.FieldWidget` (label + input + help + error).
 
-        self._widget_kwargs.update(widget_kwargs)
-        return self
+        This is the successor to the old ``__call__`` behaviour — yields a
+        self-contained Textual Container that renders all field chrome.
 
-    # ── Validation ──────────────────────────────────────────────
+        Pass ``renderer=callable`` to override the entire inner layout; the
+        callable receives this ``BoundField`` and must return a
+        ``ComposeResult``.
+        """
+        from .field_widget import FieldWidget
+
+        self._check_not_rendered()
+        self._configure(
+            label_style=label_style,
+            help_style=help_style,
+            disabled=disabled,
+            **widget_kwargs,
+        )
+        return FieldWidget(bound_field=self, renderer=renderer)
+
+    # ── Validation (thin delegators) ──────────────────────────────
 
     def validate(self) -> bool:
-        """Validate this field's current value (submit path).
-
-        Delegates to ``_validate_for("submit")``, which runs every
-        validator whose ``validate_on`` includes ``"submit"`` — which
-        is all validators by default.
-        """
-        return self._validate_for("submit")
+        """Validate this field (submit path).  Fires error listeners."""
+        return self.controller.validate()
 
     def _validate_for(self, event: str) -> bool:
-        """Run the validation pipeline for a specific triggering event.
+        """Event-scoped validation.  Fires error listeners."""
+        result = self.controller._validate_for(event)
+        self.controller._notify_errors()
+        return result
 
-        Only validators whose ``validate_on`` includes *event* are
-        executed.  The ``required`` check is performed for ``"blur"``
-        and ``"submit"`` (not for ``"change"``).  Returns True if no
-        failures were found.
-        """
-        failures: list[str] = []
-
-        # 1. Type coercion
-        try:
-            python_value = self._field.to_python(self.value)
-        except ValidationError as e:
-            failures.append(e.message)
-            self.errors = failures
-            self.has_error = True
-            self.error_messages = failures
-            return False
-
-        self.value = python_value
-
-        # 2. Required check — when the user has finished with the field,
-        #    or when the form is submitted.
-        if event in {"blur", "submit"} and self._field.required:
-            result = Required().validate(python_value)
-            if not result.is_valid:
-                desc = (
-                    result.failure_descriptions[0]
-                    if result.failure_descriptions
-                    else "This field is required."
-                )
-                failures.append(desc)
-                self.errors = failures
-                self.has_error = True
-                self.error_messages = failures
-                return False
-
-        # 3. Skip further validation if value is empty (field is optional
-        #    and has no value yet — validators should not fire).
-        is_empty = (
-            python_value is None
-            or (isinstance(python_value, str) and python_value.strip() == "")
-        )
-        if is_empty:
-            self.errors = []
-            self.has_error = False
-            self.error_messages = []
-            return True
-
-        # 4. Run validators whose validate_on includes this event
-        for v in self._field.validators:
-            if event in v.validate_on:
-                result = v.validate(python_value)
-                if not result.is_valid:
-                    for desc in result.failure_descriptions:
-                        failures.append(desc)
-
-        if failures:
-            self.errors = failures
-            self.has_error = True
-            self.error_messages = failures
-            return False
-
-        self.errors = []
-        self.has_error = False
-        self.error_messages = []
-        return True
-
-    # ── Textual compose ─────────────────────────────────────────
-
-    def compose(self) -> ComposeResult:
-        """Yield the field's widget subtree based on label_style and help_style."""
-        inner_widget = self._build_inner_widget()
-        self._inner_widget = inner_widget
-
-        ls = self._label_style
-        hs = self._help_style
-
-        if ls == "above":
-            yield Label(self.label, classes="field-label")
-            with Vertical(classes="field-input-col"):
-                yield inner_widget
-                if self.help_text:
-                    if hs == "below":
-                        yield Static(self.help_text, classes="field-help")
-                    elif hs == "tooltip":
-                        inner_widget.tooltip = self.help_text
-                yield Label("", classes="field-error")
-        elif ls == "beside":
-            with Horizontal(classes="field-beside"):
-                yield Label(self.label, classes="field-label")
-                with Vertical(classes="field-input-col"):
-                    yield inner_widget
-                    if self.help_text:
-                        if hs == "below":
-                            yield Static(self.help_text, classes="field-help")
-                        elif hs == "tooltip":
-                            inner_widget.tooltip = self.help_text
-                    yield Label("", classes="field-error")
-        elif ls == "placeholder":
-            if isinstance(inner_widget, (Input, FormInput)):
-                inner_widget.placeholder = self.label
-            with Vertical(classes="field-input-col"):
-                yield inner_widget
-                if self.help_text:
-                    if hs == "below":
-                        yield Static(self.help_text, classes="field-help")
-                    elif hs == "tooltip":
-                        inner_widget.tooltip = self.help_text
-                yield Label("", classes="field-error")
+    # ── Inner widget construction ─────────────────────────────────
 
     def _build_inner_widget(self) -> Widget:
-        """Instantiate the inner widget from Field configuration."""
+        """Instantiate the raw Textual input widget from Field configuration."""
         from .fields import BooleanField, ChoiceField
+        from .widgets import FormTextArea
+
+        from textual.widgets import TextArea
 
         widget_class = self._field.widget_class
         kwargs = dict(self._widget_kwargs)
 
         if isinstance(self._field, BooleanField):
-            widget = widget_class(self.label, self.value or False, **kwargs)
+            widget = widget_class(self.label, self.controller.value or False, **kwargs)
         elif isinstance(self._field, ChoiceField):
-            options = [(lbl, val) for lbl, val in self._field.choices]
+            options = list(self._field.choices)
             legal_values = {val for _, val in self._field.choices}
-            if self.value in legal_values:
-                widget = widget_class(options, value=self.value, **kwargs)
+            val = self.controller.value
+            if val in legal_values:
+                widget = widget_class(options, value=val, **kwargs)
             else:
                 widget = widget_class(options, allow_blank=True, **kwargs)
         elif widget_class in (FormTextArea, TextArea):
             widget = widget_class(**kwargs)
-            val = self.value
+            val = self.controller.value
             widget.text = str(val) if val is not None else ""
         else:
-            # Input-like widgets
-            val = self.value
+            val = self.controller.value
             widget = widget_class(
                 value=str(val) if val is not None else "",
                 **kwargs,
@@ -344,95 +268,3 @@ class BoundField(Container):
 
         widget.disabled = self.disabled
         return widget
-
-    # ── Reactive watchers ───────────────────────────────────────
-
-    def watch_value(self, new_value: Any) -> None:
-        """Sync programmatic value changes to the inner widget."""
-        if self._inner_widget is None:
-            return
-        try:
-            if isinstance(self._inner_widget, (Checkbox, FormCheckbox)):
-                self._inner_widget.value = bool(new_value)
-            elif isinstance(self._inner_widget, (Select, FormSelect)):
-                self._inner_widget.value = (
-                    new_value if new_value is not None else Select.BLANK
-                )
-            elif isinstance(self._inner_widget, (TextArea, FormTextArea)):
-                self._inner_widget.text = (
-                    str(new_value) if new_value is not None else ""
-                )
-            elif isinstance(self._inner_widget, (Input, FormInput)):
-                self._inner_widget.value = (
-                    str(new_value) if new_value is not None else ""
-                )
-        except Exception:
-            pass
-
-    def watch_has_error(self, has_error: bool) -> None:
-        """Toggle error label visibility."""
-        try:
-            error_label = self.query_one(".field-error", Label)
-            if has_error:
-                error_label.add_class("has-error")
-            else:
-                error_label.remove_class("has-error")
-        except NoMatches:
-            pass
-
-    def watch_error_messages(self, messages: list[str]) -> None:
-        """Update error label text."""
-        try:
-            error_label = self.query_one(".field-error", Label)
-            error_label.update("\n".join(messages))
-        except NoMatches:
-            pass
-
-    # ── Event handlers ──────────────────────────────────────────
-
-    def on_input_changed(self, event: Input.Changed) -> None:
-        """Sync Input widget value back to BoundField and run change validators."""
-        if isinstance(self._inner_widget, (Input, FormInput)):
-            try:
-                self.value = self._field.to_python(event.value)
-            except ValidationError:
-                self.value = event.value
-            self.is_dirty = True
-            had_error = self.has_error
-            self._validate_for("change")
-            # If change validators all passed but the field still carried a
-            # stale error (from a previous blur), re-run blur validators so
-            # the error clears as soon as the value becomes valid again.
-            if not self.has_error and had_error:
-                self._validate_for("blur")
-
-    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
-        """Sync Checkbox value back to BoundField."""
-        self.value = event.value
-        self.is_dirty = True
-
-    def on_select_changed(self, event: Select.Changed) -> None:
-        """Sync Select value back to BoundField."""
-        self.value = event.value
-        self.is_dirty = True
-
-    def on_text_area_changed(self, event: TextArea.Changed) -> None:
-        """Sync TextArea value back to BoundField."""
-        if isinstance(self._inner_widget, (TextArea, FormTextArea)):
-            self.value = self._inner_widget.text
-            self.is_dirty = True
-
-    def on_descendant_blur(self, event: events.DescendantBlur) -> None:
-        """Run blur validators when the inner field widget loses focus."""
-        if event.widget is self._inner_widget:
-            self._validate_for("blur")
-
-    # ── Internal helpers ────────────────────────────────────────
-
-    def _mark_rendered(self) -> None:
-        """Mark as rendered (for duplicate detection by DefaultFormLayout)."""
-        if self._rendered:
-            raise FormError(
-                f"Field {self._name!r} has already been yielded in this layout."
-            )
-        self._rendered = True

@@ -2,7 +2,10 @@
 
 import pytest
 
+from textual.widget import Widget
+
 from textual_wtf.bound import BoundField
+from textual_wtf.controller import FieldController
 from textual_wtf.exceptions import FormError, ValidationError
 from textual_wtf.fields import (
     BooleanField,
@@ -12,7 +15,7 @@ from textual_wtf.fields import (
     TextField,
 )
 from textual_wtf.forms import Form
-from textual_wtf.validators import FunctionValidator, MinLength
+from textual_wtf.validators import FunctionValidator, MinLength, Required
 
 
 class ContactForm(Form):
@@ -62,13 +65,21 @@ class TestBoundFieldProperties:
         assert form.email.name == "email"
 
     def test_validators_list(self):
-        assert len(ContactForm().name.validators) >= 1
+        # required=True prepends Required; MinLength follows
+        validators = ContactForm().name.validators
+        assert len(validators) >= 2
+        assert any(isinstance(v, Required) for v in validators)
+        assert any(isinstance(v, MinLength) for v in validators)
 
     def test_label_style_default(self):
         assert ContactForm().name.label_style == "above"
 
     def test_help_style_default(self):
         assert ContactForm().name.help_style == "below"
+
+    def test_has_controller(self):
+        form = ContactForm()
+        assert isinstance(form.name.controller, FieldController)
 
 
 # ── Initial values ──────────────────────────────────────────────
@@ -126,10 +137,9 @@ class TestBoundFieldValidation:
     def test_integer_coerced_at_init(self):
         """String '25' from the data dict is coerced to int at init time."""
         form = ContactForm(data={"name": "Alice", "age": 25})
-        assert form.age.value == 25  # already an int before validate()
+        assert form.age.value == 25
 
     def test_integer_to_python_runs(self):
-        """validate() passes and the value remains a correctly-typed int."""
         form = ContactForm(data={"name": "Alice", "age": 25})
         assert form.age.validate() is True
         assert form.age.value == 25
@@ -165,7 +175,8 @@ class TestBoundFieldValidation:
             code = StringField("Code", required=True, validators=[no_spaces])
 
         form = StrictForm()
-        assert isinstance(form.code.validators[0], FunctionValidator)
+        # Required is prepended; FunctionValidator wraps no_spaces
+        assert any(isinstance(v, FunctionValidator) for v in form.code.validators)
 
     def test_callable_validator(self):
         """FunctionValidator wrapping raises ValidationError on bad input."""
@@ -243,14 +254,22 @@ class TestConvenienceKwargs:
         assert F(data={"bio": "Short"}).bio.validate() is True
 
 
-# ── __call__ ────────────────────────────────────────────────────
+# ── __call__ — returns raw inner widget ─────────────────────────
 
 
 class TestBoundFieldCall:
-    def test_returns_self(self):
+    def test_returns_widget(self):
+        """__call__ returns the raw inner Textual widget (not self)."""
         form = ContactForm()
         result = form.name()
-        assert result is form.name
+        assert isinstance(result, Widget)
+        assert result is not form.name
+
+    def test_stamps_field_controller(self):
+        form = ContactForm()
+        widget = form.name()
+        assert hasattr(widget, "_field_controller")
+        assert widget._field_controller is form.name.controller
 
     def test_marks_rendered(self):
         form = ContactForm()
@@ -290,16 +309,41 @@ class TestBoundFieldCall:
         assert "classes" in form.name._widget_kwargs
 
 
+# ── simple_layout — returns FieldWidget ─────────────────────────
+
+
+class TestSimpleLayout:
+    def test_returns_field_widget(self):
+        from textual_wtf.field_widget import FieldWidget
+
+        form = ContactForm()
+        result = form.email.simple_layout()
+        assert isinstance(result, FieldWidget)
+
+    def test_marks_rendered(self):
+        form = ContactForm()
+        form.email.simple_layout()
+        assert form.email._rendered is True
+
+    def test_duplicate_raises(self):
+        form = ContactForm()
+        form.email.simple_layout()
+        with pytest.raises(FormError, match="already been yielded"):
+            form.email.simple_layout()
+
+    def test_call_then_simple_layout_raises(self):
+        """Calling __call__ then simple_layout (or vice versa) also raises."""
+        form = ContactForm()
+        form.age()
+        with pytest.raises(FormError):
+            form.age.simple_layout()
+
+
 # ── _validate_for — event-scoped validation ─────────────────────
 
 
 class TestValidateFor:
-    """BoundField._validate_for(event) only fires validators whose
-    validate_on includes *event*.  validate() always runs everything."""
-
     def test_change_does_not_trigger_required(self):
-        """Required field with empty value: change should not flag it as an error."""
-
         class F(Form):
             name = StringField("Name", required=True)
 
@@ -309,8 +353,6 @@ class TestValidateFor:
         assert form.name.has_error is False
 
     def test_blur_triggers_required(self):
-        """Required field with empty value: blur should fail."""
-
         class F(Form):
             name = StringField("Name", required=True)
 
@@ -321,8 +363,6 @@ class TestValidateFor:
         assert any("required" in e.lower() for e in form.name.errors)
 
     def test_change_triggers_max_length(self):
-        """MaxLength fires on change, so an over-length value is caught immediately."""
-
         class F(Form):
             tag = StringField("Tag", max_length=5)
 
@@ -331,8 +371,6 @@ class TestValidateFor:
         assert form.tag.has_error is True
 
     def test_change_does_not_trigger_min_length(self):
-        """MinLength does NOT fire on change — short values are tolerated while typing."""
-
         class F(Form):
             name = StringField("Name", min_length=5)
 
@@ -341,8 +379,6 @@ class TestValidateFor:
         assert form.name.has_error is False
 
     def test_blur_triggers_min_length(self):
-        """MinLength fires on blur — too-short value is caught when leaving the field."""
-
         class F(Form):
             name = StringField("Name", min_length=5)
 
@@ -352,21 +388,15 @@ class TestValidateFor:
         assert any("at least 5" in e for e in form.name.errors)
 
     def test_submit_triggers_min_length(self):
-        """validate() routes through _validate_for("submit"), which fires min_length."""
-
         class F(Form):
             name = StringField("Name", required=True, min_length=5)
 
         form = F(data={"name": "ab"})
-        # change: min_length not in change validators — passes
         assert form.name._validate_for("change") is True
-        # submit via validate(): min_length has "submit" in validate_on — fails
         assert form.name.validate() is False
         assert any("at least 5" in e for e in form.name.errors)
 
     def test_validate_delegates_to_validate_for_submit(self):
-        """validate() and _validate_for("submit") produce identical outcomes."""
-
         class F(Form):
             code = StringField("Code", min_length=4)
 
@@ -378,8 +408,6 @@ class TestValidateFor:
         assert form1.code.errors == form2.code.errors
 
     def test_validate_for_clears_errors_when_valid(self):
-        """_validate_for clears has_error and errors when the value is now valid."""
-
         class F(Form):
             tag = StringField("Tag", max_length=5)
 
@@ -393,8 +421,6 @@ class TestValidateFor:
         assert form.tag.errors == []
 
     def test_empty_optional_field_passes_blur(self):
-        """An optional empty field should always pass _validate_for("blur")."""
-
         class F(Form):
             tag = StringField("Tag", min_length=3)
 
@@ -403,8 +429,6 @@ class TestValidateFor:
         assert form.tag.has_error is False
 
     def test_blur_collects_errors_from_multiple_validators(self):
-        """Both MinLength and a custom callable validator fire on blur."""
-
         def no_digits(v):
             if any(c.isdigit() for c in v):
                 raise ValidationError("No digits allowed")
@@ -413,7 +437,6 @@ class TestValidateFor:
             code = StringField("Code", min_length=4, validators=[no_digits])
 
         form = F(data={"code": "ab1"})
-        # blur: min_length fires (too short) AND no_digits fires (has digit)
         assert form.code._validate_for("blur") is False
         assert len(form.code.errors) >= 2
 
@@ -424,7 +447,6 @@ class TestValidateFor:
 class TestBoundFieldToPython:
     def test_integer_field_delegates(self):
         form = ContactForm()
-        # Directly test the delegation
         assert form.age.field.to_python("42") == 42
 
     def test_string_field_passthrough(self):
