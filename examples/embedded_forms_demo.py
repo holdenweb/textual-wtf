@@ -25,16 +25,18 @@ from textual_wtf.exceptions import AmbiguousFieldError
 
 
 class AddressForm(Form):
-    """Reusable postal address form (embedded into OrderForm twice)."""
+    """Reusable postal address form.
+
+    Required-ness is intentionally left unset at the field level so that
+    it can be controlled per-embedding via a Form *instance* assignment.
+    """
 
     street = StringField(
         label="Street",
-        required=True,
         help_text="House number and street name",
     )
     city = StringField(
         label="City",
-        required=True,
         help_text="Town or city",
     )
     postcode = StringField(
@@ -44,7 +46,14 @@ class AddressForm(Form):
 
 
 class OrderForm(Form):
-    """Composite form: personal fields + two embedded address sub-forms."""
+    """Composite form: personal fields + two embedded address sub-forms.
+
+    ``billing = AddressForm(required=True)``  — all billing fields required.
+    ``shipping = AddressForm(required=False)`` — all shipping fields optional.
+
+    The required= kwarg cascades to every field whose own required status
+    wasn't explicitly set (field-level explicit settings always win).
+    """
 
     label_style = "beside"
     help_style = "tooltip"
@@ -61,8 +70,8 @@ class OrderForm(Form):
         help_text="Contact email address",
     )
 
-    billing = AddressForm
-    shipping = AddressForm
+    billing = AddressForm(required=True)   # all billing fields required
+    shipping = AddressForm(required=False)  # all shipping fields optional
 
 
 class EmbeddedFormsDemoScreen(ExampleScreen):

@@ -508,3 +508,190 @@ class TestHelpStyleCascade:
         form = F(help_style="tooltip")
         assert form.name.help_style == "below"   # field set it explicitly
         assert form.email.help_style == "tooltip"  # instance default applied
+
+
+# ── Required cascade — instance-level override ─────────────────
+
+
+class TestRequiredCascade:
+    """Form(required=...) cascades to fields that have no explicit required."""
+
+    def test_instance_required_true_propagates(self):
+        class F(Form):
+            name = StringField("Name")
+            age = StringField("Age")
+
+        form = F(required=True)
+        assert form.name.required is True
+        assert form.age.required is True
+
+    def test_instance_required_false_propagates(self):
+        class F(Form):
+            name = StringField("Name")
+
+        form = F(required=False)
+        assert form.name.required is False
+
+    def test_field_explicit_true_wins_over_instance_false(self):
+        class F(Form):
+            name = StringField("Name", required=True)  # explicit
+            email = StringField("Email")               # no explicit
+
+        form = F(required=False)
+        assert form.name.required is True   # field-level explicit wins
+        assert form.email.required is False  # instance default applies
+
+    def test_field_explicit_false_wins_over_instance_true(self):
+        class F(Form):
+            name = StringField("Name", required=False)  # explicit
+            email = StringField("Email")                # no explicit
+
+        form = F(required=True)
+        assert form.name.required is False  # field-level explicit wins
+        assert form.email.required is True   # instance default applies
+
+    def test_no_override_keeps_field_defaults(self):
+        class F(Form):
+            name = StringField("Name", required=True)
+            email = StringField("Email")
+
+        form = F()  # no required kwarg
+        assert form.name.required is True
+        assert form.email.required is False
+
+    def test_instance_required_affects_validators(self):
+        """Required validator is added/removed to match the cascade result."""
+        from textual_wtf.validators import Required
+
+        class F(Form):
+            name = StringField("Name")
+
+        form_req = F(required=True)
+        form_opt = F(required=False)
+        assert any(isinstance(v, Required) for v in form_req.name.validators)
+        assert not any(isinstance(v, Required) for v in form_opt.name.validators)
+
+    def test_instance_required_validates_correctly(self):
+        class F(Form):
+            name = StringField("Name")
+
+        form = F(required=True)
+        assert form.name.validate() is False   # empty → required fails
+        form.name.value = "Alice"
+        assert form.name.validate() is True
+
+
+# ── Embedded Form instance assignment ──────────────────────────
+
+
+class TestEmbeddedFormInstance:
+    """Form *instance* class-level assignments with required= overrides."""
+
+    def _make_addr_class(self):
+        """Helper: an AddressForm whose fields have no explicit required."""
+        class Addr(Form):
+            street = StringField("Street")
+            city = StringField("City")
+        return Addr
+
+    def test_fields_expanded_with_prefix(self):
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            addr = Addr(required=True)
+
+        assert "addr_street" in F._field_definitions
+        assert "addr_city" in F._field_definitions
+
+    def test_class_attr_removed(self):
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            addr = Addr()
+
+        assert not isinstance(getattr(F, "addr", None), BaseForm)
+
+    def test_required_true_cascades(self):
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            addr = Addr(required=True)
+
+        form = F()
+        assert form.addr_street.required is True
+        assert form.addr_city.required is True
+
+    def test_required_false_cascades(self):
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            addr = Addr(required=False)
+
+        form = F()
+        assert form.addr_street.required is False
+
+    def test_different_required_per_embedding(self):
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            billing = Addr(required=True)
+            shipping = Addr(required=False)
+
+        form = F()
+        assert form.billing_street.required is True
+        assert form.billing_city.required is True
+        assert form.shipping_street.required is False
+        assert form.shipping_city.required is False
+
+    def test_field_explicit_required_wins_over_embedding_override(self):
+        """A field with required=True explicit survives required=False on the embedding."""
+        class StrictAddr(Form):
+            street = StringField("Street", required=True)  # explicit
+            city = StringField("City")                     # no explicit
+
+        class F(Form):
+            addr = StrictAddr(required=False)
+
+        form = F()
+        assert form.addr_street.required is True   # explicit field-level wins
+        assert form.addr_city.required is False     # override applies
+
+    def test_class_assignment_unaffected_by_adjacent_instance(self):
+        """A plain class assignment alongside an instance assignment keeps originals."""
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            billing = Addr            # class — no override
+            shipping = Addr(required=True)  # instance — required=True
+
+        form = F()
+        assert form.billing_street.required is False  # unchanged (field default)
+        assert form.shipping_street.required is True   # instance override applied
+
+    def test_instance_embed_collision_raises(self):
+        Addr = self._make_addr_class()
+
+        with pytest.raises(FormError, match="conflicts"):
+            class BadForm(Form):
+                addr_street = StringField("Street")
+                addr = Addr(required=True)
+
+    def test_instance_embed_get_data(self):
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            addr = Addr(required=True)
+
+        form = F(data={"addr_street": "99 High St"})
+        assert form.get_data()["addr_street"] == "99 High St"
+
+    def test_instance_embed_validation(self):
+        Addr = self._make_addr_class()
+
+        class F(Form):
+            billing = Addr(required=True)
+            shipping = Addr(required=False)
+
+        form = F()  # all empty
+        assert form.billing_street.validate() is False  # required → fails
+        assert form.shipping_street.validate() is True  # optional → passes

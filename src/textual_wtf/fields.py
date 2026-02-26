@@ -22,6 +22,11 @@ if TYPE_CHECKING:
     from .forms import BaseForm
 
 
+# Sentinel used to distinguish an explicit ``required=False`` from an
+# omitted ``required`` argument.  Only _UNSET means "apply cascade".
+_UNSET: object = object()
+
+
 class Field:
     """Immutable declarative configuration for a single form field.
 
@@ -36,7 +41,7 @@ class Field:
         label: str,
         *,
         initial: Any = None,
-        required: bool = False,
+        required: bool | object = _UNSET,
         disabled: bool = False,
         validators: list[Validator | Callable[..., Any]] | tuple[()] = (),
         help_text: str = "",
@@ -47,7 +52,10 @@ class Field:
     ) -> None:
         self.label = label
         self.initial = initial
-        self.required = required
+        # Track whether required was passed explicitly so Form-instance-level
+        # required= overrides know whether to apply.
+        self._required_explicitly_set: bool = required is not _UNSET
+        self.required: bool = False if required is _UNSET else bool(required)
         self.disabled = disabled
         self.validators = [
             v if isinstance(v, Validator) else FunctionValidator(v)
@@ -55,7 +63,7 @@ class Field:
         ]
         # required=True is implemented as the first validator so the pipeline
         # is fully unified — no special-case code in FieldController.
-        if required:
+        if self.required:
             self.validators.insert(0, Required())
         self.help_text = help_text
         self._label_style_explicit = label_style is not None
@@ -64,6 +72,29 @@ class Field:
         self.help_style: HelpStyle = help_style if help_style is not None else "below"
         self.widget_class = widget_class or self.default_widget_class
         self.widget_kwargs = widget_kwargs
+
+    def _with_required(self, required: bool) -> Field:
+        """Return a shallow clone with the required flag overridden.
+
+        If this field had ``required`` set *explicitly* (the caller passed
+        ``required=True`` or ``required=False``), the field's own setting wins
+        and ``self`` is returned unchanged.  Otherwise a clone is returned with
+        the Required validator added or removed as appropriate.
+        """
+        if self._required_explicitly_set:
+            return self  # field-level explicit setting always wins
+        import copy
+        clone = copy.copy(self)
+        clone.required = required
+        # Rebuild validators: strip any existing Required, re-add if needed.
+        clone.validators = [
+            v for v in self.validators if not isinstance(v, Required)
+        ]
+        if required:
+            clone.validators.insert(0, Required())
+        # Mark clone as explicitly set so further cascades don't change it.
+        clone._required_explicitly_set = True
+        return clone
 
     def bind(
         self,

@@ -57,7 +57,7 @@ class FormMetaclass(type):
                 and hasattr(value, "_field_definitions")
                 and value._field_definitions  # skip BaseForm itself
             ):
-                # Direct Form subclass assignment — auto-embed using
+                # Direct Form *class* assignment — auto-embed using
                 # the class variable name as the prefix.
                 source_defs = value._field_definitions
                 for field_name, field_obj in source_defs.items():
@@ -67,6 +67,26 @@ class FormMetaclass(type):
                             f"Embedded field {prefixed_name!r} conflicts "
                             f"with existing field."
                         )
+                    field_definitions[prefixed_name] = field_obj
+                to_remove.append(key)
+            elif (
+                not isinstance(value, type)
+                and hasattr(type(value), "_field_definitions")
+                and type(value)._field_definitions  # skip bare BaseForm instances
+            ):
+                # Form *instance* assignment — embed with the variable name as
+                # the prefix, applying any instance-level required= override.
+                source_defs = type(value)._field_definitions
+                required_override = getattr(value, "_instance_required", None)
+                for field_name, field_obj in source_defs.items():
+                    prefixed_name = f"{key}_{field_name}"
+                    if prefixed_name in field_definitions:
+                        raise FormError(
+                            f"Embedded field {prefixed_name!r} conflicts "
+                            f"with existing field."
+                        )
+                    if required_override is not None:
+                        field_obj = field_obj._with_required(required_override)
                     field_definitions[prefixed_name] = field_obj
                 to_remove.append(key)
 
@@ -114,6 +134,7 @@ class BaseForm(metaclass=FormMetaclass):
         layout_class: type[FormLayout] | None = None,
         label_style: LabelStyle | None = None,
         help_style: HelpStyle | None = None,
+        required: bool | None = None,
     ) -> None:
         self._data = data or {}
         self._layout_class = layout_class or self.__class__.layout_class
@@ -123,6 +144,9 @@ class BaseForm(metaclass=FormMetaclass):
         self._instance_help_style = (
             help_style if help_style is not None else self.__class__.help_style
         )
+        # Stored so the metaclass can read it when this instance is used as
+        # a class-level embedded-form assignment (e.g. shipping = AddressForm(required=False)).
+        self._instance_required: bool | None = required
         # Flag set by add_error() during clean_form(); reset at each clean() call
         self._clean_form_errored: bool = False
 
@@ -132,6 +156,11 @@ class BaseForm(metaclass=FormMetaclass):
             self.__class__, "_field_definitions", OrderedDict()
         )
         for name, field in field_defs.items():
+            # Apply form-instance-level required override for direct (non-embedded) use.
+            # For embedded instances the metaclass already baked the override into
+            # the cloned field definitions, so this is a no-op in that path.
+            if required is not None:
+                field = field._with_required(required)
             bf = field.bind(self, name, self._data)
             # Apply form-level styles where the field didn't explicitly set them
             if not field._label_style_explicit:

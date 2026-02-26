@@ -9,7 +9,7 @@ Run with: python -m examples  (select "Interactive Layout Demo")
 """
 
 from textual.app import ComposeResult, on
-from textual.containers import Horizontal, Vertical, Container, ScrollableContainer
+from textual.containers import Horizontal, Vertical, ScrollableContainer
 from .example_screen import ExampleScreen
 from textual.widgets import Static, RadioButton, RadioSet
 from textual_wtf import Form, StringField, IntegerField
@@ -134,15 +134,17 @@ class InteractiveDemoScreen(ExampleScreen):
                             yield RadioButton("Below", id="help-below", value=True)
                             yield RadioButton("Tooltip", id="help-tooltip")
 
-                # Three forms side by side, one per label style
+                # Three forms side by side, one per label style.
+                # The Vertical itself carries the col_id so we can query it for
+                # rebuilds without an extra Container wrapper (which would
+                # collapse in an auto-height parent without explicit sizing).
                 with Horizontal(id="forms-row"):
                     for col_id, label_style, title in _COLUMNS:
-                        with Vertical(classes="form-col"):
+                        form = DemoForm(label_style=label_style)
+                        setattr(self, f"_form_{label_style}", form)
+                        with Vertical(id=col_id, classes="form-col"):
                             yield Static(title, classes="col-title")
-                            with Container(id=col_id):
-                                form = DemoForm(label_style=label_style)
-                                setattr(self, f"_form_{label_style}", form)
-                                yield form.build_layout()
+                            yield form.build_layout()
 
     def on_mount(self) -> None:
         """Set up initial state."""
@@ -159,7 +161,7 @@ class InteractiveDemoScreen(ExampleScreen):
 
     def _rebuild_all(self) -> None:
         """Rebuild all three form columns with the current help style."""
-        for col_id, label_style, _title in _COLUMNS:
+        for col_id, label_style, title in _COLUMNS:
             old_form: DemoForm = getattr(self, f"_form_{label_style}")
             old_data = old_form.get_data()
             col = self.query_one(f"#{col_id}")
@@ -170,7 +172,12 @@ class InteractiveDemoScreen(ExampleScreen):
                 help_style=self._help_style,
             )
             setattr(self, f"_form_{label_style}", new_form)
-            col.mount(new_form.build_layout())
+            # Re-mount both the title and the new layout (col_id is on the
+            # Vertical itself, so remove_children() cleared everything).
+            col.mount(
+                Static(title, classes="col-title"),
+                new_form.build_layout(),
+            )
 
     @on(Form.Submitted)
     def form_submitted(self, event: Form.Submitted) -> None:
