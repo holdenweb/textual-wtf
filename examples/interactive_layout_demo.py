@@ -1,13 +1,15 @@
 """
 Interactive demo showing field container layout options.
 
-Use radio buttons to switch between different layout styles in real-time.
+All three label styles are displayed side by side so you can compare them
+at a glance.  A single control switches the help-text style across all
+three columns simultaneously.
 
 Run with: python -m examples  (select "Interactive Layout Demo")
 """
 
 from textual.app import ComposeResult, on
-from textual.containers import Vertical, Container, ScrollableContainer
+from textual.containers import Horizontal, Vertical, Container, ScrollableContainer
 from .example_screen import ExampleScreen
 from textual.widgets import Static, RadioButton, RadioSet
 from textual_wtf import Form, StringField, IntegerField
@@ -31,14 +33,21 @@ class DemoForm(Form):
     )
 
 
+# (container-id, label_style value, column heading)
+_COLUMNS = [
+    ("col-above",       "above",       "Above"),
+    ("col-beside",      "beside",      "Alongside"),
+    ("col-placeholder", "placeholder", "Placeholder"),
+]
+
+
 class InteractiveDemoScreen(ExampleScreen):
-    """Interactive app for exploring layout options."""
+    """Interactive app for exploring all three label-style options at once."""
 
     CSS = """
     Screen {
         layout: vertical;
         overflow: hidden;
-        align: center middle;
     }
 
     .demo-title {
@@ -53,7 +62,7 @@ class InteractiveDemoScreen(ExampleScreen):
 
     .demo-scroll {
         height: 1fr;
-        width: 80;
+        width: 100%;
     }
 
     .demo-content {
@@ -89,61 +98,25 @@ class InteractiveDemoScreen(ExampleScreen):
         margin-right: 3;
     }
 
-    .form-separator {
-        height: 1;
-        background: $primary;
-        margin: 1 0;
-    }
-
-    .form-layout {
-        width: auto;
+    #forms-row {
         height: auto;
-        border: solid $accent;
-        padding: 1;
+        layout: horizontal;
     }
 
-    .field-container {
+    .form-col {
+        width: 1fr;
         height: auto;
-        margin-bottom: 1;
+        border: solid $primary;
+        margin: 0 1;
+        padding: 0;
     }
 
-    .field-label {
+    .col-title {
         text-style: bold;
-        width: 10;
-    }
-
-    .field-horizontal {
-        layout: horizontal;
-        height: auto;
-    }
-
-    .field-horizontal .field-label {
-        width: 10;
-        padding-right: 1;
-    }
-
-    .field-help-text {
-        color: $text-muted;
-        text-style: italic;
-    }
-
-    .field-errors {
-        color: $error;
-        display: none;
-    }
-
-    .field-errors.visible {
-        display: block;
-    }
-
-    .form-buttons {
-        margin-top: 1;
-        height: auto;
-        layout: horizontal;
-    }
-
-    .form-buttons Button {
-        margin-right: 2;
+        background: $primary;
+        color: $text;
+        text-align: center;
+        padding: 0 1;
     }
     """
 
@@ -153,85 +126,51 @@ class InteractiveDemoScreen(ExampleScreen):
 
         with ScrollableContainer(classes="demo-scroll"):
             with Vertical(classes="demo-content"):
-                # Controls section
+                # Single control: help-text style (label style shown as column headers)
                 with Vertical(classes="controls-section"):
-                    # Label style controls
                     with Vertical(classes="control-group"):
-                        yield Static("Label Style:", classes="control-label")
-                        with RadioSet(id="label-style"):
-                            yield RadioButton("Above", id="label-above")
-                            yield RadioButton("Alongside", id="label-alongside")
-                            yield RadioButton("Placeholder", id="label-placeholder", value=True)
-
-                    # Help text controls
-                    with Vertical(classes="control-group"):
-                        yield Static("Help Text:", classes="control-label")
+                        yield Static("Help Text Style:", classes="control-label")
                         with RadioSet(id="help-style"):
                             yield RadioButton("Below", id="help-below", value=True)
                             yield RadioButton("Tooltip", id="help-tooltip")
 
-                # Separator
-                yield Static("", classes="form-separator")
-
-                # Form container (will be replaced when options change)
-                with Container(id="form-container"):
-                    self.current_form = DemoForm(label_style="placeholder")
-                    yield self.current_form.build_layout()
-
-                # Add some padding at bottom for scrolling
-                yield Static("")
-                yield Static("")
+                # Three forms side by side, one per label style
+                with Horizontal(id="forms-row"):
+                    for col_id, label_style, title in _COLUMNS:
+                        with Vertical(classes="form-col"):
+                            yield Static(title, classes="col-title")
+                            with Container(id=col_id):
+                                form = DemoForm(label_style=label_style)
+                                setattr(self, f"_form_{label_style}", form)
+                                yield form.build_layout()
 
     def on_mount(self) -> None:
         """Set up initial state."""
         super().on_mount()
-        self._label_style = "placeholder"
         self._help_style = "below"
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        """Handle radio button changes - rebuild form with new options."""
-        # Determine current selections
-        label_style_set = self.query_one("#label-style", RadioSet)
-        help_style_set = self.query_one("#help-style", RadioSet)
+        """Rebuild all three forms when the help-text style changes."""
+        help_pressed = self.query_one("#help-style", RadioSet).pressed_button
+        if not help_pressed:
+            return
+        self._help_style = "below" if help_pressed.id == "help-below" else "tooltip"
+        self._rebuild_all()
 
-        # Get selected radio button IDs
-        label_pressed = label_style_set.pressed_button
-        help_pressed = help_style_set.pressed_button
-
-        if not label_pressed or not help_pressed:
-            return  # Not fully initialized yet
-
-        # Map radio button IDs to label_style values
-        label_id = label_pressed.id
-        help_id = help_pressed.id
-
-        if label_id == "label-above":
-            self._label_style = "above"
-        elif label_id == "label-alongside":
-            self._label_style = "beside"
-        else:  # label-placeholder
-            self._label_style = "placeholder"
-
-        self._help_style = "below" if help_id == "help-below" else "tooltip"
-
-        # Rebuild form with new options
-        self.rebuild_form()
-
-    def rebuild_form(self) -> None:
-        """Rebuild the form with current layout options."""
-        # Get current form data before rebuilding
-        old_data = self.current_form.get_data()
-
-        # Remove old form
-        form_container = self.query_one("#form-container")
-        form_container.remove_children()
-
-        self.current_form = DemoForm(
-            data=old_data,
-            label_style=self._label_style,
-            help_style=self._help_style,
-        )
-        form_container.mount(self.current_form.build_layout())
+    def _rebuild_all(self) -> None:
+        """Rebuild all three form columns with the current help style."""
+        for col_id, label_style, _title in _COLUMNS:
+            old_form: DemoForm = getattr(self, f"_form_{label_style}")
+            old_data = old_form.get_data()
+            col = self.query_one(f"#{col_id}")
+            col.remove_children()
+            new_form = DemoForm(
+                data=old_data,
+                label_style=label_style,
+                help_style=self._help_style,
+            )
+            setattr(self, f"_form_{label_style}", new_form)
+            col.mount(new_form.build_layout())
 
     @on(Form.Submitted)
     def form_submitted(self, event: Form.Submitted) -> None:

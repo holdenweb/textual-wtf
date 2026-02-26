@@ -165,6 +165,16 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
         padding: 1;
         background: $surface;
     }
+
+    #form-buttons {
+        height: auto;
+        layout: horizontal;
+        margin: 1 1 1 2;
+    }
+
+    #form-buttons Button {
+        margin-right: 2;
+    }
     """
 
     def compose(self) -> ComposeResult:
@@ -190,6 +200,9 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
                             yield bf["shipping_street"].simple_layout()
                             yield bf["shipping_city"].simple_layout()
                             yield bf["shipping_postcode"].simple_layout()
+                with Horizontal(id="form-buttons"):
+                    yield Button("Submit", variant="success", id="submit")
+                    yield Button("Cancel", variant="default", id="cancel")
 
             # ── Right column ─────────────────────────────────────────────
             # Field-path lookup / inspector.
@@ -216,6 +229,23 @@ class EmbeddedFormsDemoScreen(ExampleScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "lookup-btn":
             self._do_lookup()
+        elif event.button.id == "submit":
+            self._do_submit()
+        elif event.button.id == "cancel":
+            self.action_back()
+
+    def _do_submit(self) -> None:
+        """Validate and submit the form, showing a notification with the data."""
+        if self.form.clean():
+            data = self.form.get_data()
+            parts = [f"{k}={v!r}" for k, v in data.items() if v is not None]
+            self.notify(
+                "Submitted: " + ", ".join(parts),
+                severity="information",
+                timeout=8,
+            )
+        else:
+            self.notify("Please fix errors before submitting.", severity="error")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Trigger lookup when Enter is pressed in the query box."""
