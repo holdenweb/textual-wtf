@@ -11,7 +11,6 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Checkbox, Input, Label, Select, Static, TextArea
 
-from .exceptions import ValidationError
 from .widgets import FormCheckbox, FormInput, FormSelect, FormTextArea
 
 if TYPE_CHECKING:
@@ -113,8 +112,7 @@ class FieldWidget(Container):
             yield from self._renderer(bf)
             return
 
-        inner_widget = bf._build_inner_widget()
-        self._inner_widget = inner_widget
+        self._inner_widget = inner_widget = bf._build_inner_widget()
         # Stamp the controller for ControllerAwareLayout ancestors
         inner_widget._field_controller = bf.controller  # type: ignore[attr-defined]
 

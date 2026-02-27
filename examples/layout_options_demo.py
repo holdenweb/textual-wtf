@@ -5,7 +5,7 @@ Run with: python -m examples  (select "Layout Options Demo")
 """
 
 from textual.app import ComposeResult, on
-from textual.containers import Vertical
+from textual.containers import Vertical, Horizontal
 
 from .example_screen import ExampleScreen
 from textual.widgets import Static
@@ -127,27 +127,28 @@ class LayoutOptionsDemoScreen(ExampleScreen):
 
     def compose(self) -> ComposeResult:
         """Create three forms with different layouts."""
+        with Horizontal():
 
-        # Vertical layout
-        with Vertical(classes="demo-section"):
-            yield Static("Vertical (Default)", classes="demo-title")
-            yield Static("Labels above fields")
-            form1 = VerticalForm()
-            yield form1.build_layout()
+            # Vertical layout
+            with Vertical(classes="demo-section"):
+                yield Static("Vertical (Default)", classes="demo-title")
+                yield Static("Labels above fields")
+                form1 = VerticalForm()
+                yield form1.build_layout()
 
-        # Horizontal layout
-        with Vertical(classes="demo-section"):
-            yield Static("Horizontal", classes="demo-title")
-            yield Static("Labels left of fields")
-            form2 = HorizontalForm()
-            yield form2.build_layout()
+            # Horizontal layout
+            with Vertical(classes="demo-section"):
+                yield Static("Horizontal", classes="demo-title")
+                yield Static("Labels left of fields")
+                form2 = HorizontalForm()
+                yield form2.build_layout()
 
-        # Placeholder layout
-        with Vertical(classes="demo-section"):
-            yield Static("Placeholder", classes="demo-title")
-            yield Static("Labels as placeholders")
-            form3 = PlaceholderForm()
-            yield form3.build_layout()
+            # Placeholder layout
+            with Vertical(classes="demo-section"):
+                yield Static("Placeholder", classes="demo-title")
+                yield Static("Labels as placeholders")
+                form3 = PlaceholderForm()
+                yield form3.build_layout()
 
     @on(Form.Submitted)
     def on_submitted(self, event: Form.Submitted) -> None:
