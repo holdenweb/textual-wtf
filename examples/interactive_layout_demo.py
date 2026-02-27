@@ -144,7 +144,7 @@ class InteractiveDemoScreen(ExampleScreen):
                         setattr(self, f"_form_{label_style}", form)
                         with Vertical(id=col_id, classes="form-col"):
                             yield Static(title, classes="col-title")
-                            yield form.build_layout()
+                            yield from form.layout()
 
     def on_mount(self) -> None:
         """Set up initial state."""
@@ -176,7 +176,7 @@ class InteractiveDemoScreen(ExampleScreen):
             # Vertical itself, so remove_children() cleared everything).
             col.mount(
                 Static(title, classes="col-title"),
-                new_form.build_layout(),
+                *new_form.layout(),
             )
 
     @on(Form.Submitted)

@@ -190,7 +190,7 @@ class ContactApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = ContactForm()
-        yield self.form.build_layout()
+        yield from self.form.layout()
 
     @on(ContactForm.Submitted)
     def on_submitted(self, event: ContactForm.Submitted) -> None:

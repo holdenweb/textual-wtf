@@ -61,7 +61,7 @@ Form behaviour is configured through class attributes. Each can be overridden pe
 :   Form-level default for the `required` flag. `None` means "do not override field-level defaults". See the [required cascade](#the-required-cascade) below.
 
 `layout_class: type[FormLayout] | None = None`
-:   Override the layout class used by `build_layout()`. When `None` (the default), `DefaultFormLayout` is used.
+:   Override the layout class used by `layout()`. When `None` (the default), `DefaultFormLayout` is used.
 
 ```python title="my_forms.py"
 from textual_wtf import Form, StringField, TextField
@@ -196,10 +196,10 @@ form.set_data({"username": "bob", "age": 35})
 
 ## Render lifecycle
 
-A form instance is single-use per layout. Once `build_layout()` has been called (or a `BoundField` has been rendered via `simple_layout()` or `bf()`), that field is marked as rendered and cannot be composed a second time. To display the same form data again (for example, after a navigation event), create a new form instance:
+A form instance is single-use per layout. Once `layout()` has been called (or a `BoundField` has been rendered via `simple_layout()` or `bf()`), that field is marked as rendered and cannot be composed a second time. To display the same form data again (for example, after a navigation event), create a new form instance:
 
 ```python
 old_data = form.get_data()
 form = UserForm(data=old_data)
-yield form.build_layout()
+yield from form.layout()
 ```

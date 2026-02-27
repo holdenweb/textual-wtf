@@ -25,7 +25,7 @@ The form classes provide the declarative base for field definitions, the validat
         - add_error
         - get_data
         - set_data
-        - build_layout
+        - layout
       show_root_heading: true
       show_source: false
 
@@ -47,7 +47,7 @@ The form classes provide the declarative base for field definitions, the validat
 layout_class: type[FormLayout] | None = None
 ```
 
-The layout class used by `build_layout()`. When `None`, `DefaultFormLayout` is used. Set this on your form class to use a custom layout by default:
+The layout class used by `layout()`. When `None`, `DefaultFormLayout` is used. Set this on your form class to use a custom layout by default:
 
 ```python
 class MyForm(Form):
@@ -138,7 +138,6 @@ def __init__(
     self,
     data: dict[str, Any] | None = None,
     *,
-    layout_class: type[FormLayout] | None = None,
     label_style: LabelStyle | None = None,
     help_style: HelpStyle | None = None,
     required: bool | None = None,
@@ -190,10 +189,26 @@ def set_data(self, data: dict[str, Any]) -> None
 
 `get_data()` returns a snapshot of all current field values. `set_data()` updates the named fields without affecting others.
 
-### build_layout
+### layout
 
 ```python
-def build_layout(self, id: str | None = None) -> FormLayout
+def layout(
+    self,
+    layout: type[FormLayout] | Callable[..., ComposeResult] | None = None,
+    *,
+    id: str | None = None,
+) -> ComposeResult
 ```
 
-Instantiate and return the form's layout widget. Uses `self._layout_class` (which defaults to `DefaultFormLayout`).
+Yield the widget(s) that render this form. Use with `yield from`:
+
+```python
+yield from self.form.layout()                    # default layout
+yield from self.form.layout(MyTwoColumnLayout)   # Widget subclass
+yield from self.form.layout(my_layout_fn)        # callable
+```
+
+With no argument, yields a `DefaultFormLayout` widget (fields + Submit/Cancel buttons).
+The default may be customised by setting `layout_class` on the form class.
+With a `FormLayout` subclass, yields an instance of that class.
+With a callable, calls `layout(form)` and yields from the result.

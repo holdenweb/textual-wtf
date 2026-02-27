@@ -134,21 +134,21 @@ class LayoutOptionsDemoScreen(ExampleScreen):
                 yield Static("Vertical (Default)", classes="demo-title")
                 yield Static("Labels above fields")
                 form1 = VerticalForm()
-                yield form1.build_layout()
+                yield from form1.layout()
 
             # Horizontal layout
             with Vertical(classes="demo-section"):
                 yield Static("Horizontal", classes="demo-title")
                 yield Static("Labels left of fields")
                 form2 = HorizontalForm()
-                yield form2.build_layout()
+                yield from form2.layout()
 
             # Placeholder layout
             with Vertical(classes="demo-section"):
                 yield Static("Placeholder", classes="demo-title")
                 yield Static("Labels as placeholders")
                 form3 = PlaceholderForm()
-                yield form3.build_layout()
+                yield from form3.layout()
 
     @on(Form.Submitted)
     def on_submitted(self, event: Form.Submitted) -> None:

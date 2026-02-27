@@ -7,7 +7,7 @@ Demonstrates:
 - Manual submit button with form validation
 
 This is a lower-level usage pattern; for the simplest approach see
-simple_rendered_form.py which uses Form.build_layout().
+simple_rendered_form.py which uses Form.layout().
 
 Run with: python -m examples  (select "Simple Field Example")
 """

@@ -70,7 +70,7 @@ That's the entire form definition. No `__init__`, no widget IDs, no event wiring
 
 ## Rendering the form
 
-Call `form.build_layout()` inside your screen's `compose` method. It returns a `DefaultFormLayout` widget — a `VerticalScroll` container pre-populated with every field, a title label, and Submit / Cancel buttons.
+Call `form.layout()` inside your screen's `compose` method. It returns a `DefaultFormLayout` widget — a `VerticalScroll` container pre-populated with every field, a title label, and Submit / Cancel buttons.
 
 ```python title="contact_form.py (continued)"
 class ContactApp(App):
@@ -88,7 +88,7 @@ class ContactApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = ContactForm()
-        yield self.form.build_layout()
+        yield from self.form.layout()
 ```
 
 !!! tip "Store the form instance"
@@ -167,7 +167,7 @@ class ContactApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = ContactForm()
-        yield self.form.build_layout()
+        yield from self.form.layout()
 
     @on(ContactForm.Submitted)
     def on_submitted(self, event: ContactForm.Submitted) -> None:
@@ -197,7 +197,7 @@ Pass a `data` dictionary to the form constructor to pre-populate field values. T
 existing_record = {"name": "Alice", "age": 30, "newsletter": True}
 
 self.form = ContactForm(data=existing_record)
-yield self.form.build_layout()
+yield from self.form.layout()
 ```
 
 Each key in the dictionary must match a field name. Keys that do not correspond to any field are silently ignored.

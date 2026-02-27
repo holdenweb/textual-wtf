@@ -426,11 +426,17 @@ class TestFormLayoutClass:
 
         assert CustomForm.layout_class is FormLayout
 
-    def test_instance_override(self):
-        from textual_wtf.layouts import FormLayout
+    def test_layout_callable_dispatched(self):
+        """layout() with a callable yields from it rather than instantiating a class."""
+        results = []
 
-        form = SimpleForm(layout_class=FormLayout)
-        assert form._layout_class is FormLayout
+        def my_layout(form):
+            results.append(form)
+            return iter([])
+
+        form = SimpleForm()
+        list(form.layout(my_layout))  # exhaust the generator
+        assert results == [form]
 
 
 # ── Label style cascade ────────────────────────────────────────

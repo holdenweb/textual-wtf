@@ -2,9 +2,9 @@
 
 textual-wtf offers three rendering modes with different tradeoffs between convenience and control.
 
-## build_layout() — automatic rendering
+## layout() — automatic rendering
 
-`form.build_layout()` is the zero-configuration path. It returns a `DefaultFormLayout` widget that renders every unrendered field in declaration order, preceded by the form title (if set) and followed by Submit and Cancel buttons.
+`form.layout()` is the zero-configuration path. It yields a `DefaultFormLayout` widget that renders every unrendered field in declaration order, preceded by the form title (if set) and followed by Submit and Cancel buttons. Use it with `yield from` in your `compose()` method.
 
 ```python title="auto_layout.py"
 from textual.app import App, ComposeResult, on
@@ -20,21 +20,21 @@ class ProfileForm(Form):
 class ProfileApp(App):
     def compose(self) -> ComposeResult:
         self.form = ProfileForm()
-        yield self.form.build_layout()
+        yield from self.form.layout()
 
     @on(ProfileForm.Submitted)
     def submitted(self, event: ProfileForm.Submitted) -> None:
         self.notify(str(event.form.get_data()))
 ```
 
-`build_layout()` accepts an optional `id` parameter if you need to query the layout later:
+`layout()` accepts an optional `id` parameter if you need to query the layout later:
 
 ```python
-yield self.form.build_layout(id="profile-layout")
+yield from self.form.layout(id="profile-layout")
 ```
 
 !!! tip "Layout class override"
-    Set `layout_class` on the form class (or pass it to the constructor) to swap in a custom layout:
+    Set `layout_class` on the form class to swap in a custom layout:
 
     ```python
     class ProfileForm(Form):
@@ -303,8 +303,9 @@ class MyForm(Form):
 Or pass it at instantiation:
 
 ```python
-form = MyForm(layout_class=TwoColumnLayout)
-yield form.build_layout()
+form = MyForm()
+form.__class__.layout_class = TwoColumnLayout  # or: set layout_class = TwoColumnLayout on the class
+yield from form.layout()
 ```
 
 ### The renderer= callback

@@ -22,7 +22,7 @@ The guide covers all aspects of textual-wtf in depth. Work through it in order, 
 
     ---
 
-    Three rendering modes — `build_layout()`, `simple_layout()`, and the raw `bf()` call. All three `label_style` options and both `help_style` options. Custom layouts by subclassing `FormLayout`.
+    Three rendering modes — `layout()`, `simple_layout()`, and the raw `bf()` call. All three `label_style` options and both `help_style` options. Custom layouts by subclassing `FormLayout`.
 
 -   **[Embedded Forms](embedding.md)**
 

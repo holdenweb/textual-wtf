@@ -195,7 +195,7 @@ class PasswordApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = PasswordChangeForm()
-        yield self.form.build_layout()
+        yield from self.form.layout()
 
     @on(PasswordChangeForm.Submitted)
     def on_submitted(self, event: PasswordChangeForm.Submitted) -> None:

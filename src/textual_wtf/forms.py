@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from textual.message import Message
 
@@ -13,6 +13,8 @@ from .fields import Field
 from .types import HelpStyle, LabelStyle
 
 if TYPE_CHECKING:
+    from textual.app import ComposeResult
+
     from .bound import BoundField
     from .layouts import FormLayout
 
@@ -132,14 +134,12 @@ class BaseForm(metaclass=FormMetaclass):
         self,
         data: dict[str, Any] | None = None,
         *,
-        layout_class: type[FormLayout] | None = None,
         label_style: LabelStyle | None = None,
         help_style: HelpStyle | None = None,
         required: bool | None = None,
         title: str | None = None,
     ) -> None:
         self._data = data or {}
-        self._layout_class = layout_class or self.__class__.layout_class
         self._instance_label_style = (
             label_style if label_style is not None else self.__class__.label_style
         )
@@ -307,12 +307,50 @@ class BaseForm(metaclass=FormMetaclass):
 
     # ── Layout ──────────────────────────────────────────────────
 
-    def build_layout(self, id: str | None = None) -> FormLayout:
-        """Instantiate and return the FormLayout for this Form instance."""
+    def layout(
+        self,
+        layout: type[FormLayout] | Callable[..., ComposeResult] | None = None,
+        *,
+        id: str | None = None,
+    ) -> ComposeResult:
+        """Yield the widget(s) that render this form.
+
+        With no argument, yields a :class:`~textual_wtf.DefaultFormLayout` widget
+        (fields + Submit/Cancel buttons). The default may be customised by setting
+        the :attr:`layout_class` class attribute on the form.
+
+        With a :class:`~textual_wtf.FormLayout` subclass, yields an instance of
+        that class wrapping this form.
+
+        With a callable, calls ``layout(self)`` and yields from the result.
+        The callable receives this form instance and should return a
+        ``ComposeResult``.
+
+        Usage::
+
+            # default layout
+            yield from self.form.layout()
+
+            # custom Widget subclass
+            yield from self.form.layout(MyTwoColumnLayout)
+
+            # callable
+            def my_layout(form):
+                yield form.name.simple_layout()
+                yield form.email.simple_layout()
+
+            yield from self.form.layout(my_layout)
+        """
+        import inspect
         from .layouts import DefaultFormLayout
 
-        layout_cls = self._layout_class or DefaultFormLayout
-        return layout_cls(form=self, id=id)
+        effective = layout if layout is not None else (
+            self.__class__.layout_class or DefaultFormLayout
+        )
+        if inspect.isclass(effective):
+            yield effective(form=self, id=id)
+        else:
+            yield from effective(self)
 
 
 class Form(BaseForm):

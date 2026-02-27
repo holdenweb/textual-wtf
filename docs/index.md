@@ -55,7 +55,7 @@ textual-wtf brings the ergonomics of Django forms to the terminal. Define your f
 
     ---
 
-    Use `build_layout()` for a zero-config layout, `simple_layout()` for full chrome on each field, or `bf()` for the raw widget when you need complete layout freedom.
+    Use `layout()` for a zero-config layout, `simple_layout()` for full chrome on each field, or `bf()` for the raw widget when you need complete layout freedom.
 
     [:octicons-arrow-right-24: Layout guide](guide/layout.md)
 
@@ -80,7 +80,7 @@ class ContactForm(Form):
 class ContactApp(App):
     def compose(self) -> ComposeResult:
         self.form = ContactForm()
-        yield self.form.build_layout()
+        yield from self.form.layout()
 
     @on(ContactForm.Submitted)
     def on_submitted(self, event: ContactForm.Submitted) -> None:

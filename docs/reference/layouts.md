@@ -75,7 +75,7 @@ Use `ControllerAwareLayout` (or its subclass `DefaultFormLayout`) as your layout
       show_root_heading: true
       show_source: false
 
-`DefaultFormLayout` is the layout returned by `form.build_layout()` when no custom `layout_class` is set. It renders:
+`DefaultFormLayout` is the layout returned by `form.layout()` when no custom `layout_class` is set. It renders:
 
 1. A bold title label (if `form.title` is non-empty)
 2. Each unrendered field via `bf.simple_layout()`
@@ -111,4 +111,4 @@ DefaultFormLayout {
 
 ### Unrendered guard
 
-`DefaultFormLayout.compose()` skips any field that has already been rendered (`bf._rendered is True`). This lets you render some fields manually in a custom section before calling `form.build_layout()`, though mixing the two approaches in the same form is unusual.
+`DefaultFormLayout.compose()` skips any field that has already been rendered (`bf._rendered is True`). This lets you render some fields manually in a custom section before calling `form.layout()`, though mixing the two approaches in the same form is unusual.

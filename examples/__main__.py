@@ -16,7 +16,7 @@ from .simple_rendered_form import SimpleRenderedFormScreen
 DEMOS: list[DemoEntry] = [
     DemoEntry(
         title="Simple Rendered Form",
-        description="Form.build_layout() with Submitted/Cancelled handling",
+        description="Form.layout() with Submitted/Cancelled handling",
         screen_class=SimpleRenderedFormScreen,
     ),
     DemoEntry(
