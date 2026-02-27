@@ -114,3 +114,4 @@ wingdbstub.py
 
 # Mac OS thumbnails
 .DS_Store
+.claude/
