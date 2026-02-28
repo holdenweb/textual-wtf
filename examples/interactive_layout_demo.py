@@ -1,15 +1,16 @@
 """
-Interactive demo showing field container layout options.
+Interactive demo showing label and help-text style options.
 
-All three label styles are displayed side by side so you can compare them
-at a glance.  A single control switches the help-text style across all
-three columns simultaneously.
+A single form is displayed on the left.  Two radio sets on the right let
+you switch the label style (above / beside / placeholder) and the help-text
+style (below / tooltip) independently.  The form rebuilds instantly on each
+change, preserving any data already entered.
 
 Run with: python -m examples  (select "Interactive Layout Demo")
 """
 
 from textual.app import ComposeResult, on
-from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.containers import Horizontal, Vertical
 from .example_screen import ExampleScreen
 from textual.widgets import Static, RadioButton, RadioSet
 from textual_wtf import Form, StringField, IntegerField
@@ -23,175 +24,102 @@ class DemoForm(Form):
         required=True,
         min_length=3,
         max_length=12,
-        help_text="Enter your full name"
+        help_text="Enter your full name",
     )
     age = IntegerField(
         label="Age",
         minimum=20,
         maximum=130,
-        help_text="Enter your age in years"
+        help_text="Enter your age in years",
     )
 
 
-# (container-id, label_style value, column heading)
-_COLUMNS = [
-    ("col-above",       "above",       "Above"),
-    ("col-beside",      "beside",      "Alongside"),
-    ("col-placeholder", "placeholder", "Placeholder"),
-]
-
-
 class InteractiveDemoScreen(ExampleScreen):
-    """Interactive app for exploring all three label-style options at once."""
+    """Single form whose label and help-text styles are controlled by radio sets."""
 
     CSS = """
-    Screen {
-        layout: vertical;
-        overflow: hidden;
+    InteractiveDemoScreen {
+        layout: horizontal;
     }
 
-    .demo-title {
-        dock: top;
-        height: 3;
-        text-style: bold;
-        text-align: center;
-        background: $primary;
-        color: $text;
-        padding: 1;
-    }
-
-    .demo-scroll {
-        height: 1fr;
-        width: 100%;
-    }
-
-    .demo-content {
+    #form-col {
+        width: 2fr;
+        height: auto;
         padding: 1 2;
     }
 
-    .controls-section {
+    #controls-col {
+        width: 1fr;
         height: auto;
+        padding: 1 2;
+        border-left: solid $accent;
         background: $surface;
-        padding: 0 2;
-        margin-bottom: 1;
-        border: solid $accent;
-    }
-
-    .control-group {
-        height: auto;
-        padding: 0;
     }
 
     .control-label {
         text-style: bold;
+        margin-top: 1;
     }
 
     RadioSet {
         height: auto;
-        layout: horizontal;
         border: none;
         background: transparent;
         padding: 0;
-    }
-
-    RadioButton {
-        margin-right: 3;
-    }
-
-    #forms-row {
-        height: auto;
-        layout: horizontal;
-    }
-
-    .form-col {
-        width: 1fr;
-        height: auto;
-        border: solid $primary;
-        margin: 0 1;
-        padding: 0;
-    }
-
-    .col-title {
-        text-style: bold;
-        background: $primary;
-        color: $text;
-        text-align: center;
-        padding: 0 1;
+        margin-bottom: 1;
     }
     """
 
     def compose(self) -> ComposeResult:
-        """Create the interactive demo UI."""
-        yield Static("Interactive Layout Options Demo", classes="demo-title")
-
-        with ScrollableContainer(classes="demo-scroll"):
-            with Vertical(classes="demo-content"):
-                # Single control: help-text style (label style shown as column headers)
-                with Vertical(classes="controls-section"):
-                    with Vertical(classes="control-group"):
-                        yield Static("Help Text Style:", classes="control-label")
-                        with RadioSet(id="help-style"):
-                            yield RadioButton("Below", id="help-below", value=True)
-                            yield RadioButton("Tooltip", id="help-tooltip")
-
-                # Three forms side by side, one per label style.
-                # The Vertical itself carries the col_id so we can query it for
-                # rebuilds without an extra Container wrapper (which would
-                # collapse in an auto-height parent without explicit sizing).
-                with Horizontal(id="forms-row"):
-                    for col_id, label_style, title in _COLUMNS:
-                        form = DemoForm(label_style=label_style)
-                        setattr(self, f"_form_{label_style}", form)
-                        with Vertical(id=col_id, classes="form-col"):
-                            yield Static(title, classes="col-title")
-                            yield from form.layout()
-
-    def on_mount(self) -> None:
-        """Set up initial state."""
-        super().on_mount()
+        self._label_style = "above"
         self._help_style = "below"
+        self._form = DemoForm(label_style=self._label_style, help_style=self._help_style)
+
+        with Vertical(id="form-col"):
+            yield from self._form.layout()
+
+        with Vertical(id="controls-col"):
+            yield Static("Label Style", classes="control-label")
+            with RadioSet(id="label-style"):
+                yield RadioButton("Above", id="label-above", value=True)
+                yield RadioButton("Alongside", id="label-beside")
+                yield RadioButton("Placeholder", id="label-placeholder")
+
+            yield Static("Help Text Style", classes="control-label")
+            with RadioSet(id="help-style"):
+                yield RadioButton("Below", id="help-below", value=True)
+                yield RadioButton("Tooltip", id="help-tooltip")
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
-        """Rebuild all three forms when the help-text style changes."""
-        help_pressed = self.query_one("#help-style", RadioSet).pressed_button
-        if not help_pressed:
+        """Rebuild the form when either style control changes."""
+        if event.radio_set.id == "label-style" and event.pressed:
+            self._label_style = event.pressed.id.removeprefix("label-")
+        elif event.radio_set.id == "help-style" and event.pressed:
+            self._help_style = event.pressed.id.removeprefix("help-")
+        else:
             return
-        self._help_style = "below" if help_pressed.id == "help-below" else "tooltip"
-        self._rebuild_all()
+        self._rebuild_form()
 
-    def _rebuild_all(self) -> None:
-        """Rebuild all three form columns with the current help style."""
-        for col_id, label_style, title in _COLUMNS:
-            old_form: DemoForm = getattr(self, f"_form_{label_style}")
-            old_data = old_form.get_data()
-            col = self.query_one(f"#{col_id}")
-            col.remove_children()
-            new_form = DemoForm(
-                data=old_data,
-                label_style=label_style,
-                help_style=self._help_style,
-            )
-            setattr(self, f"_form_{label_style}", new_form)
-            # Re-mount both the title and the new layout (col_id is on the
-            # Vertical itself, so remove_children() cleared everything).
-            col.mount(
-                Static(title, classes="col-title"),
-                *new_form.layout(),
-            )
+    def _rebuild_form(self) -> None:
+        """Replace the form widget, preserving current field values."""
+        old_data = self._form.get_data()
+        self._form = DemoForm(
+            data=old_data,
+            label_style=self._label_style,
+            help_style=self._help_style,
+        )
+        form_col = self.query_one("#form-col")
+        form_col.remove_children()
+        form_col.mount(*self._form.layout())
 
     @on(Form.Submitted)
     def form_submitted(self, event: Form.Submitted) -> None:
-        """Handle form submission."""
-        if event.form.is_valid():
-            data = event.form.get_data()
-            self.notify(f"Form submitted: {data}", severity="information")
-        else:
-            self.notify("Please fix errors before submitting", severity="error")
+        data = event.form.get_data()
+        self.notify(f"Submitted: {data}", severity="information")
 
     @on(Form.Cancelled)
     def form_cancelled(self, event: Form.Cancelled) -> None:
-        """Handle form cancellation."""
-        self.notify("Form cancelled", severity="warning")
+        self.notify("Cancelled", severity="warning")
         self.action_back()
 
 
