@@ -198,5 +198,5 @@ A form instance is single-use per layout. Once `layout()` has been called (or a 
 ```python
 old_data = form.get_data()
 form = UserForm(data=old_data)
-yield from form.layout()
+yield form.layout()
 ```

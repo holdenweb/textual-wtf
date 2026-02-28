@@ -194,21 +194,21 @@ def set_data(self, data: dict[str, Any]) -> None
 ```python
 def layout(
     self,
-    layout: type[FormLayout] | Callable[..., ComposeResult] | None = None,
+    layout: type[FormLayout] | Callable[..., Widget] | None = None,
     *,
     id: str | None = None,
-) -> ComposeResult
+) -> Widget
 ```
 
-Yield the widget(s) that render this form. Use with `yield from`:
+Return the widget that renders this form. Use with `yield` like any other Textual widget:
 
 ```python
-yield from self.form.layout()                    # default layout
-yield from self.form.layout(MyTwoColumnLayout)   # Widget subclass
-yield from self.form.layout(my_layout_fn)        # callable
+yield self.form.layout()                    # default layout
+yield self.form.layout(MyTwoColumnLayout)   # Widget subclass
+yield self.form.layout(my_layout_fn)        # callable returning a Widget
 ```
 
-With no argument, yields a `DefaultFormLayout` widget (fields + Submit/Cancel buttons).
+With no argument, returns a `DefaultFormLayout` widget (fields + Submit/Cancel buttons).
 The default may be customised by setting `layout_class` on the form class.
-With a `FormLayout` subclass, yields an instance of that class.
-With a callable, calls `layout(form)` and yields from the result.
+With a `FormLayout` subclass, returns an instance of that class.
+With a callable, calls `layout(form)` and returns the result (must be a `Widget`).

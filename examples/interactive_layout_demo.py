@@ -76,7 +76,7 @@ class InteractiveDemoScreen(ExampleScreen):
         self._form = DemoForm(label_style=self._label_style, help_style=self._help_style)
 
         with Vertical(id="form-col"):
-            yield from self._form.layout()
+            yield self._form.layout()
 
         with Vertical(id="controls-col"):
             yield Static("Label Style", classes="control-label")
@@ -110,7 +110,7 @@ class InteractiveDemoScreen(ExampleScreen):
         )
         form_col = self.query_one("#form-col")
         form_col.remove_children()
-        form_col.mount(*self._form.layout())
+        form_col.mount(self._form.layout())
 
     @on(Form.Submitted)
     def form_submitted(self, event: Form.Submitted) -> None:

@@ -70,7 +70,7 @@ class TabbedForm(Widget):
                 tab_title = getattr(form, "title", "") or f"Form {i + 1}"
                 pane_id = f"tabpane-{i}"
                 with TabPane(tab_title, id=pane_id):
-                    yield from form.layout()
+                    yield form.layout()
 
     def on_mount(self) -> None:
         """Register error listeners on all field controllers."""

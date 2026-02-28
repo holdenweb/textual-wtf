@@ -4,7 +4,7 @@ textual-wtf offers three rendering modes with different tradeoffs between conven
 
 ## layout() — automatic rendering
 
-`form.layout()` is the zero-configuration path. It yields a `DefaultFormLayout` widget that renders every unrendered field in declaration order, preceded by the form title (if set) and followed by Submit and Cancel buttons. Use it with `yield from` in your `compose()` method.
+`form.layout()` is the zero-configuration path. It returns a `DefaultFormLayout` widget that renders every unrendered field in declaration order, preceded by the form title (if set) and followed by Submit and Cancel buttons. Use it with `yield` in your `compose()` method, just like any other Textual widget.
 
 ```python title="auto_layout.py"
 from textual.app import App, ComposeResult, on
@@ -20,7 +20,7 @@ class ProfileForm(Form):
 class ProfileApp(App):
     def compose(self) -> ComposeResult:
         self.form = ProfileForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
     @on(ProfileForm.Submitted)
     def submitted(self, event: ProfileForm.Submitted) -> None:
@@ -30,7 +30,7 @@ class ProfileApp(App):
 `layout()` accepts an optional `id` parameter if you need to query the layout later:
 
 ```python
-yield from self.form.layout(id="profile-layout")
+yield self.form.layout(id="profile-layout")
 ```
 
 !!! tip "Layout class override"
@@ -292,7 +292,7 @@ Pass it directly to `layout()` at call time:
 
 ```python
 self.form = MyForm()
-yield from self.form.layout(TwoColumnLayout)
+yield self.form.layout(TwoColumnLayout)
 ```
 
 Or set `layout_class` on the form class to make it the default for every call:
@@ -311,18 +311,24 @@ Then `layout()` with no argument will use `TwoColumnLayout` automatically.
 
 ### Callable layouts
 
-`layout()` also accepts a plain callable instead of a `FormLayout` subclass. The callable receives the form instance and must return a `ComposeResult`. This is useful for lightweight, one-off arrangements that don't need a full class:
+`layout()` also accepts a plain callable instead of a `FormLayout` subclass. The callable receives the form instance and must return a `Widget`. This is useful for lightweight, one-off arrangements that don't need a full class:
 
 ```python
-def compact_layout(form) -> ComposeResult:
+from textual.widget import Widget
+from textual_wtf import ControllerAwareLayout
+
+def compact_layout(form) -> Widget:
     """Two fields side by side, no buttons."""
-    bf = form.bound_fields
-    with Horizontal():
-        yield bf["first_name"].simple_layout()
-        yield bf["last_name"].simple_layout()
+    class _Layout(ControllerAwareLayout):
+        def compose(self):
+            bf = self.form.bound_fields
+            with Horizontal():
+                yield bf["first_name"].simple_layout()
+                yield bf["last_name"].simple_layout()
+    return _Layout(form=form)
 
 self.form = MyForm()
-yield from self.form.layout(compact_layout)
+yield self.form.layout(compact_layout)
 ```
 
 ### The renderer= callback

@@ -45,7 +45,7 @@ class SimpleRenderedFormScreen(ExampleScreen):
 
     def compose(self) -> ComposeResult:
         self.form = UserForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
     @on(Form.Submitted)
     def on_submitted(self, event: Form.Submitted) -> None:
