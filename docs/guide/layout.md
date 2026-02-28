@@ -288,7 +288,14 @@ class TwoColumnLayout(ControllerAwareLayout):
 
 ### Using a custom layout
 
-Assign it to `layout_class` on the form:
+Pass it directly to `layout()` at call time:
+
+```python
+self.form = MyForm()
+yield from self.form.layout(TwoColumnLayout)
+```
+
+Or set `layout_class` on the form class to make it the default for every call:
 
 ```python
 class MyForm(Form):
@@ -300,12 +307,22 @@ class MyForm(Form):
     phone      = StringField("Phone")
 ```
 
-Or pass it at instantiation:
+Then `layout()` with no argument will use `TwoColumnLayout` automatically.
+
+### Callable layouts
+
+`layout()` also accepts a plain callable instead of a `FormLayout` subclass. The callable receives the form instance and must return a `ComposeResult`. This is useful for lightweight, one-off arrangements that don't need a full class:
 
 ```python
-form = MyForm()
-form.__class__.layout_class = TwoColumnLayout  # or: set layout_class = TwoColumnLayout on the class
-yield from form.layout()
+def compact_layout(form) -> ComposeResult:
+    """Two fields side by side, no buttons."""
+    bf = form.bound_fields
+    with Horizontal():
+        yield bf["first_name"].simple_layout()
+        yield bf["last_name"].simple_layout()
+
+self.form = MyForm()
+yield from self.form.layout(compact_layout)
 ```
 
 ### The renderer= callback

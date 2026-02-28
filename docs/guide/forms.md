@@ -141,9 +141,6 @@ form = UserForm(
 `data: dict[str, Any] | None = None`
 :   Initial field values. Keys should match field names.
 
-`layout_class: type[FormLayout] | None = None`
-:   Override the layout class for this instance.
-
 `label_style: LabelStyle | None = None`
 :   Override the form-wide label style.
 
