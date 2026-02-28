@@ -63,6 +63,11 @@ class FieldWidget(Container):
     FieldWidget .field-error.has-error {
         display: block;
     }
+    FieldWidget Input,
+    FieldWidget Select,
+    FieldWidget TextArea {
+        background: $boost;
+    }
     """
 
     has_error: reactive[bool] = reactive(False)
