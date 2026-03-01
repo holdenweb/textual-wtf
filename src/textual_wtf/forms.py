@@ -317,7 +317,7 @@ class BaseForm(metaclass=FormMetaclass):
 
     def layout(
         self,
-        layout: type[FormLayout] | Callable[..., Widget] | None = None,
+        using: type[FormLayout] | Callable[..., Widget] | None = None,
         *,
         id: str | None = None,
     ) -> Widget:
@@ -330,7 +330,7 @@ class BaseForm(metaclass=FormMetaclass):
         With a :class:`~textual_wtf.FormLayout` subclass, returns an instance of
         that class wrapping this form.
 
-        With a callable, calls ``layout(form)`` and returns the result.
+        With a callable, calls ``using(form)`` and returns the result.
         The callable receives this form instance and must return a
         :class:`~textual.widget.Widget`.
 
@@ -351,7 +351,7 @@ class BaseForm(metaclass=FormMetaclass):
         import inspect
         from .layouts import DefaultFormLayout
 
-        effective = layout if layout is not None else (
+        effective = using if using is not None else (
             self.__class__.layout_class or DefaultFormLayout
         )
         if inspect.isclass(effective):

@@ -194,7 +194,7 @@ def set_data(self, data: dict[str, Any]) -> None
 ```python
 def layout(
     self,
-    layout: type[FormLayout] | Callable[..., Widget] | None = None,
+    using: type[FormLayout] | Callable[..., Widget] | None = None,
     *,
     id: str | None = None,
 ) -> Widget
@@ -211,4 +211,4 @@ yield self.form.layout(my_layout_fn)        # callable returning a Widget
 With no argument, returns a `DefaultFormLayout` widget (fields + Submit/Cancel buttons).
 The default may be customised by setting `layout_class` on the form class.
 With a `FormLayout` subclass, returns an instance of that class.
-With a callable, calls `layout(form)` and returns the result (must be a `Widget`).
+With a callable, calls `using(form)` and returns the result (must be a `Widget`).
