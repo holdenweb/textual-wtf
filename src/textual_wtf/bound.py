@@ -7,7 +7,6 @@ from typing import Any, TYPE_CHECKING
 from .controller import FieldController
 from .exceptions import FormError
 from .types import HelpStyle, LabelStyle
-from .validators import Required
 
 if TYPE_CHECKING:
     from textual.widget import Widget
@@ -17,12 +16,18 @@ if TYPE_CHECKING:
 
 
 class BoundField:
-    """Mutable runtime adapter for one field within one form instance.
+    """Runtime adapter for one field within one form instance.
 
     Created by ``Field.bind()`` during ``BaseForm.__init__``.  Not a Textual
     widget — it is a plain Python object that owns a :class:`FieldController`
     and knows how to produce either a raw inner widget (``__call__``) or a
     fully-composed ``FieldWidget`` (``simple_layout``).
+
+    ``_label_style`` and ``_help_style`` are resolved once at bind time
+    (field-explicit > form default) and are immutable thereafter.  Any
+    per-render overrides are computed inline by ``simple_layout`` /
+    ``__call__`` and passed directly to the widget — they are never stored
+    here.
     """
 
     def __init__(
@@ -31,22 +36,26 @@ class BoundField:
         form: BaseForm,
         name: str,
         data: dict[str, Any] | None = None,
+        *,
+        label_style: LabelStyle | None = None,
+        help_style: HelpStyle | None = None,
     ) -> None:
         self._field = field
         self._form = form
         self._name = name
 
-        # Controller owns all mutable state / validation logic
+        # Controller owns all mutable state / validation logic, including the
+        # render-consumed guard.
         self.controller = FieldController(field, form, name, data or {})
 
-        # Per-render style overrides
-        self._label_style: LabelStyle = field.label_style
-        self._help_style: HelpStyle = field.help_style
-        self._widget_kwargs: dict[str, Any] = dict(field.widget_kwargs)
-        self.disabled: bool = field.disabled
-
-        # Render guard — set to True by __call__ or simple_layout
-        self._rendered: bool = False
+        # Bind-time resolved style defaults:
+        #   field-explicit value > form-level default (passed in from BaseForm)
+        self._label_style: LabelStyle = (
+            label_style if label_style is not None else field.label_style
+        )
+        self._help_style: HelpStyle = (
+            help_style if help_style is not None else field.help_style
+        )
 
     # ── Properties delegated to Field (read-only) ────────────────
 
@@ -80,11 +89,18 @@ class BoundField:
 
     @property
     def label_style(self) -> LabelStyle:
+        """Bind-time resolved label style (form default > field explicit)."""
         return self._label_style
 
     @property
     def help_style(self) -> HelpStyle:
+        """Bind-time resolved help style (form default > field explicit)."""
         return self._help_style
+
+    @property
+    def disabled(self) -> bool:
+        """Field-level disabled flag (field definition default)."""
+        return self._field.disabled
 
     @property
     def validators(self) -> list:
@@ -135,54 +151,6 @@ class BoundField:
         """Backward-compatible direct assignment (use form.add_error() for new code)."""
         self.controller.error_messages = list(v)
 
-    # ── Configuration ─────────────────────────────────────────────
-
-    def _apply_required(self, required: bool) -> None:
-        """Force-override the required state of this bound field.
-
-        Unlike ``Field._with_required()``, this always applies regardless of
-        whether the original field had ``required`` set explicitly.  It clones
-        the field, updates the controller's reference, and is the correct path
-        for render-level ``required=`` overrides (highest priority in the cascade).
-        """
-        import copy
-
-        clone = copy.copy(self._field)
-        clone.required = required
-        clone.validators = [v for v in self._field.validators if not isinstance(v, Required)]
-        if required:
-            clone.validators.insert(0, Required())
-        clone._required_explicitly_set = True
-        self._field = clone
-        self.controller._field = clone
-
-    def _configure(
-        self,
-        *,
-        label_style: LabelStyle | None = None,
-        help_style: HelpStyle | None = None,
-        disabled: bool | None = None,
-        required: bool | None = None,
-        **widget_kwargs: Any,
-    ) -> None:
-        """Apply per-render style and widget overrides."""
-        if label_style is not None:
-            self._label_style = label_style
-        if help_style is not None:
-            self._help_style = help_style
-        if disabled is not None:
-            self.disabled = disabled
-        if required is not None:
-            self._apply_required(required)
-        self._widget_kwargs.update(widget_kwargs)
-
-    def _check_not_rendered(self) -> None:
-        if self._rendered:
-            raise FormError(
-                f"Field {self._name!r} has already been yielded in this layout."
-            )
-        self._rendered = True
-
     # ── Public rendering API ──────────────────────────────────────
 
     def __call__(
@@ -204,15 +172,17 @@ class BoundField:
         any Textual container you like.  Use ``simple_layout()`` when you
         want the bundled label + input + help + error chrome.
         """
-        self._check_not_rendered()
-        self._configure(
-            label_style=label_style,
-            help_style=help_style,
-            disabled=disabled,
-            required=required,
-            **widget_kwargs,
+        self.controller.claim()
+        if required is not None:
+            self.controller.apply_required(required)
+
+        effective_disabled = disabled if disabled is not None else self._field.disabled
+        effective_kwargs: dict[str, Any] = {**self._field.widget_kwargs, **widget_kwargs}
+
+        widget = self._build_inner_widget(
+            disabled=effective_disabled,
+            widget_kwargs=effective_kwargs,
         )
-        widget = self._build_inner_widget()
         widget._field_controller = self.controller  # type: ignore[attr-defined]
         return widget
 
@@ -228,8 +198,10 @@ class BoundField:
     ) -> Any:  # returns FieldWidget, typed as Any to avoid circular import
         """Return a :class:`~textual_wtf.FieldWidget` (label + input + help + error).
 
-        This is the successor to the old ``__call__`` behaviour — yields a
-        self-contained Textual Container that renders all field chrome.
+        Render options are resolved fresh on each call:
+        call-site kwarg > bind-time default (form cascade > field explicit).
+        Nothing is stored on this ``BoundField``; all resolved values are
+        passed directly into the ``FieldWidget``.
 
         Pass ``renderer=callable`` to override the entire inner layout; the
         callable receives this ``BoundField`` and must return a
@@ -237,15 +209,27 @@ class BoundField:
         """
         from .field_widget import FieldWidget
 
-        self._check_not_rendered()
-        self._configure(
-            label_style=label_style,
-            help_style=help_style,
-            disabled=disabled,
-            required=required,
-            **widget_kwargs,
+        self.controller.claim()
+        if required is not None:
+            self.controller.apply_required(required)
+
+        effective_label_style: LabelStyle = (
+            label_style if label_style is not None else self._label_style
         )
-        return FieldWidget(bound_field=self, renderer=renderer)
+        effective_help_style: HelpStyle = (
+            help_style if help_style is not None else self._help_style
+        )
+        effective_disabled = disabled if disabled is not None else self._field.disabled
+        effective_kwargs: dict[str, Any] = {**self._field.widget_kwargs, **widget_kwargs}
+
+        return FieldWidget(
+            bound_field=self,
+            label_style=effective_label_style,
+            help_style=effective_help_style,
+            disabled=effective_disabled,
+            widget_kwargs=effective_kwargs,
+            renderer=renderer,
+        )
 
     # ── Validation (thin delegators) ──────────────────────────────
 
@@ -261,7 +245,12 @@ class BoundField:
 
     # ── Inner widget construction ─────────────────────────────────
 
-    def _build_inner_widget(self) -> Widget:
+    def _build_inner_widget(
+        self,
+        *,
+        disabled: bool = False,
+        widget_kwargs: dict[str, Any] | None = None,
+    ) -> Widget:
         """Instantiate the raw Textual input widget from Field configuration."""
         from .fields import BooleanField, ChoiceField
         from .widgets import FormTextArea
@@ -269,7 +258,7 @@ class BoundField:
         from textual.widgets import TextArea
 
         widget_class = self._field.widget_class
-        kwargs = dict(self._widget_kwargs)
+        kwargs = dict(widget_kwargs or {})
 
         if isinstance(self._field, BooleanField):
             widget = widget_class(self.label, self.controller.value or False, **kwargs)
@@ -292,5 +281,5 @@ class BoundField:
                 **kwargs,
             )
 
-        widget.disabled = self.disabled
+        widget.disabled = disabled
         return widget

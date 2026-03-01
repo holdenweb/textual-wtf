@@ -169,12 +169,20 @@ class BaseForm(metaclass=FormMetaclass):
             # the cloned field definitions, so this is a no-op in that path.
             if self._instance_required is not None:
                 field = field._with_required(self._instance_required)
-            bf = field.bind(self, name, self._data)
-            # Apply form-level styles where the field didn't explicitly set them
-            if not field._label_style_explicit:
-                bf._label_style = self._instance_label_style
-            if not field._help_style_explicit:
-                bf._help_style = self._instance_help_style
+            # Pass form-level style defaults through bind() so BoundField is
+            # fully initialised in one step.  bind() ignores the cascade value
+            # when the field set its own explicit style.
+            bf = field.bind(
+                self,
+                name,
+                self._data,
+                label_style=(
+                    None if field._label_style_explicit else self._instance_label_style
+                ),
+                help_style=(
+                    None if field._help_style_explicit else self._instance_help_style
+                ),
+            )
             self._bound_fields[name] = bf
 
     # ── Field access ────────────────────────────────────────────

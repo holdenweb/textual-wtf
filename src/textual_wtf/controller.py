@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, TYPE_CHECKING
 
-from .exceptions import ValidationError
+from .exceptions import FormError, ValidationError
 
 if TYPE_CHECKING:
     from .fields import Field
@@ -48,6 +48,11 @@ class FieldController:
         self.error_messages: list[str] = []
         self.is_dirty: bool = False
 
+        # ── Render guard ───────────────────────────────────────
+        # Set to True by claim() the first time a widget is produced from
+        # this controller; prevents the same field being mounted twice.
+        self._consumed: bool = False
+
         # ── Listener registries ────────────────────────────────
         self._value_listeners: list[Callable[[Any], None]] = []
         self._error_listeners: list[Callable[[bool, list[str]], None]] = []
@@ -71,6 +76,40 @@ class FieldController:
         """Set the value externally; notifies value listeners."""
         self._value = new_value
         self._notify_value()
+
+    # ── Render guard ───────────────────────────────────────────
+
+    def claim(self) -> None:
+        """Mark this controller as consumed by a widget.
+
+        Raises :class:`~textual_wtf.FormError` if a widget has already been
+        produced from this controller (i.e. the same field has been rendered
+        twice in the same layout).  Must be called at the start of
+        ``BoundField.__call__`` and ``BoundField.simple_layout``.
+        """
+        if self._consumed:
+            raise FormError(
+                f"Field {self._name!r} has already been rendered in this layout."
+            )
+        self._consumed = True
+
+    def apply_required(self, required: bool) -> None:
+        """Override the required state at render time (highest priority in the cascade).
+
+        Clones the underlying :class:`~textual_wtf.fields.Field`, adjusts its
+        ``required`` flag and validator list, and updates the controller's own
+        ``_field`` reference so that subsequent validation uses the new state.
+        """
+        import copy
+        from .validators import Required
+
+        clone = copy.copy(self._field)
+        clone.required = required
+        clone.validators = [v for v in self._field.validators if not isinstance(v, Required)]
+        if required:
+            clone.validators.insert(0, Required())
+        clone._required_explicitly_set = True
+        self._field = clone
 
     # ── Listener registration ──────────────────────────────────
 

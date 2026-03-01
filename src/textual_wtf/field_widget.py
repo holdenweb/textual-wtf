@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, TYPE_CHECKING
 
+from .types import HelpStyle, LabelStyle
+
 from textual import events
 from textual.containers import Container, Horizontal, Vertical
 from textual.css.query import NoMatches
@@ -80,10 +82,19 @@ class FieldWidget(Container):
     def __init__(
         self,
         bound_field: BoundField,
+        *,
+        label_style: LabelStyle,
+        help_style: HelpStyle,
+        disabled: bool,
+        widget_kwargs: dict[str, Any],
         renderer: Callable[[BoundField], ComposeResult] | None = None,
     ) -> None:
         super().__init__()
         self.bound_field = bound_field
+        self._label_style = label_style
+        self._help_style = help_style
+        self._disabled = disabled
+        self._widget_kwargs = widget_kwargs
         self._renderer = renderer
         self._inner_widget: Widget | None = None
 
@@ -117,12 +128,15 @@ class FieldWidget(Container):
             yield from self._renderer(bf)
             return
 
-        self._inner_widget = inner_widget = bf._build_inner_widget()
+        self._inner_widget = inner_widget = bf._build_inner_widget(
+            disabled=self._disabled,
+            widget_kwargs=self._widget_kwargs,
+        )
         # Stamp the controller for ControllerAwareLayout ancestors
         inner_widget._field_controller = bf.controller  # type: ignore[attr-defined]
 
-        ls = bf.label_style
-        hs = bf.help_style
+        ls = self._label_style
+        hs = self._help_style
 
         if ls == "above":
             yield Label(bf.label, classes="field-label")
@@ -203,7 +217,7 @@ class FieldWidget(Container):
         # If errors cleared on change but the field previously had a stale blur
         # error, run blur validators now so the error dismisses immediately.
         if not ctrl.has_error and had_error:
-            ctrl._validate_for("blur")
+            ctrl.validate_for("blur")
         self._sync_error_state()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
@@ -227,8 +241,8 @@ class FieldWidget(Container):
     def on_descendant_blur(self, event: events.DescendantBlur) -> None:
         if event.widget is self._inner_widget:
             ctrl = self.bound_field.controller
-            ctrl._validate_for("blur")
-            self._sync_error_state()
+            ctrl.validate_for("blur")   # notifies listeners (e.g. TabbedForm tab state)
+            self._sync_error_state()    # belt-and-suspenders: sync reactives directly
 
     # ── Internal helpers ──────────────────────────────────────────
 

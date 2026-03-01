@@ -101,11 +101,25 @@ class Field:
         form: BaseForm,
         name: str,
         data: dict[str, Any] | None = None,
+        *,
+        label_style: LabelStyle | None = None,
+        help_style: HelpStyle | None = None,
     ) -> BoundField:
-        """Create a BoundField for this Field within a specific form instance."""
+        """Create a BoundField for this Field within a specific form instance.
+
+        ``label_style`` and ``help_style`` carry the form-level cascade values;
+        they are used when the field did not set its own explicit style.
+        """
         from .bound import BoundField
 
-        return BoundField(field=self, form=form, name=name, data=data or {})
+        return BoundField(
+            field=self,
+            form=form,
+            name=name,
+            data=data or {},
+            label_style=label_style,
+            help_style=help_style,
+        )
 
     def _add_length_validators(
         self,
