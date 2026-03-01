@@ -18,6 +18,7 @@ validation time (reading values and errors).
         - label
         - default
         - required
+        - disabled
         - help_text
         - label_style
         - help_style
@@ -43,6 +44,8 @@ validation time (reading values and errors).
       show_source: false
       filters:
         - "!^_"
+        - "!^claim$"
+        - "!^apply_required$"
 
 ---
 

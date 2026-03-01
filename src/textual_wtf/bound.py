@@ -258,7 +258,11 @@ class BoundField:
         from textual.widgets import TextArea
 
         widget_class = self._field.widget_class
-        kwargs = dict(widget_kwargs or {})
+        # Always start from field-level widget_kwargs so field-level defaults
+        # (e.g. IntegerField's restrict= pattern) are preserved even when this
+        # method is called with no explicit widget_kwargs (e.g. from a renderer=
+        # callback).  Call-site kwargs are merged on top and win on collision.
+        kwargs = {**self._field.widget_kwargs, **(widget_kwargs or {})}
 
         if isinstance(self._field, BooleanField):
             widget = widget_class(self.label, self.controller.value or False, **kwargs)
