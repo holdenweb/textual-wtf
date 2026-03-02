@@ -91,7 +91,7 @@ class AddressLayout(ControllerAwareLayout):
 `required: bool | None = None`
 :   Override the required flag at render time (highest priority in the cascade).
 
-`renderer: callable | None = None`
+`renderer: Callable[[BoundField], ComposeResult] | None = None`
 :   Pass a callable that receives the `BoundField` and returns a `ComposeResult`. The callable replaces the entire inner layout of the `FieldWidget`.
 
 `**widget_kwargs`
@@ -131,10 +131,10 @@ class SearchBar(ControllerAwareLayout):
 ### __call__() parameters
 
 `label_style: LabelStyle | None = None`
-:   Stored on the `BoundField` but has no effect when rendering a raw widget (there is no label container).
+:   Has no effect for raw widgets (no label container). Accepted for API symmetry with `simple_layout()`.
 
 `help_style: HelpStyle | None = None`
-:   Stored on the `BoundField` but has no visible effect for raw widgets.
+:   Has no effect for raw widgets. Accepted for API symmetry with `simple_layout()`.
 
 `disabled: bool | None = None`
 :   Force the widget enabled or disabled.
@@ -144,6 +144,39 @@ class SearchBar(ControllerAwareLayout):
 
 `**widget_kwargs`
 :   Additional keyword arguments forwarded to the underlying Textual widget.
+
+---
+
+## FieldErrors — error display for raw widgets
+
+When you use `bf()` to get a raw widget, there is no surrounding `FieldWidget` to display validation errors. Place a `FieldErrors` widget next to the raw widget to get the same error display that `simple_layout()` provides automatically:
+
+```python title="raw_with_errors.py"
+from textual.app import ComposeResult
+from textual.containers import Horizontal, Vertical
+from textual.widgets import Button, Label
+from textual_wtf import Form, StringField, ControllerAwareLayout, FieldErrors
+
+class SearchForm(Form):
+    query = StringField("Search query", required=True)
+
+
+class SearchBar(ControllerAwareLayout):
+    def compose(self) -> ComposeResult:
+        bf = self.form.bound_fields
+
+        with Horizontal():
+            yield Label("Search:")
+            with Vertical():
+                yield bf["query"]()
+                yield FieldErrors(bf["query"].controller)
+            yield Button("Go", id="submit", variant="primary")
+```
+
+`FieldErrors` registers itself with the controller on mount and deregisters on unmount. It hides itself automatically when the field is valid and becomes visible (in the theme's error colour) when validation fails.
+
+!!! note "Same mechanism as FieldWidget"
+    `FieldWidget` uses `FieldErrors` internally, so both code paths share exactly the same error display logic.
 
 ---
 
