@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Callable, TYPE_CHECKING
 
@@ -37,7 +36,7 @@ class FormMetaclass(type):
         namespace: dict[str, Any],
         **kwargs: Any,
     ) -> FormMetaclass:
-        field_definitions: OrderedDict[str, Field] = OrderedDict()
+        field_definitions: dict[str, Field] = {}
 
         # Inherit fields from bases
         for base in bases:
@@ -159,9 +158,9 @@ class BaseForm(metaclass=FormMetaclass):
         self._clean_form_errored: bool = False
 
         # Bind all fields
-        self._bound_fields: OrderedDict[str, BoundField] = OrderedDict()
-        field_defs: OrderedDict[str, Field] = getattr(
-            self.__class__, "_field_definitions", OrderedDict()
+        self._bound_fields: dict[str, BoundField] = {}
+        field_defs: dict[str, Field] = getattr(
+            self.__class__, "_field_definitions", {}
         )
         for name, field in field_defs.items():
             # Apply form-instance-level required override for direct (non-embedded) use.
@@ -188,11 +187,11 @@ class BaseForm(metaclass=FormMetaclass):
     # ── Field access ────────────────────────────────────────────
 
     @property
-    def bound_fields(self) -> OrderedDict[str, BoundField]:
+    def bound_fields(self) -> dict[str, BoundField]:
         return self._bound_fields
 
     @property
-    def fields(self) -> OrderedDict[str, BoundField]:
+    def fields(self) -> dict[str, BoundField]:
         return self._bound_fields
 
     def __getattr__(self, name: str) -> BoundField:

@@ -130,36 +130,19 @@ class BoundField:
     def errors(self) -> list[str]:
         return self.controller.errors
 
-    @errors.setter
-    def errors(self, v: list[str]) -> None:
-        """Backward-compatible direct error assignment (use form.add_error() for new code)."""
-        self.controller.errors = list(v)
-
     @property
     def has_error(self) -> bool:
         return self.controller.has_error
 
-    @has_error.setter
-    def has_error(self, v: bool) -> None:
-        """Backward-compatible direct assignment (use form.add_error() for new code)."""
-        self.controller.has_error = v
-
     @property
     def error_messages(self) -> list[str]:
         return self.controller.error_messages
-
-    @error_messages.setter
-    def error_messages(self, v: list[str]) -> None:
-        """Backward-compatible direct assignment (use form.add_error() for new code)."""
-        self.controller.error_messages = list(v)
 
     # ── Public rendering API ──────────────────────────────────────
 
     def __call__(
         self,
         *,
-        label_style: LabelStyle | None = None,
-        help_style: HelpStyle | None = None,
         disabled: bool | None = None,
         required: bool | None = None,
         **widget_kwargs: Any,

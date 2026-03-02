@@ -23,9 +23,9 @@ class UserForm(Form):
 
 ### Field ordering
 
-Fields appear in the layout in the exact order they are declared in the class body. This is guaranteed by the metaclass, which uses an `OrderedDict` internally.
+Fields appear in the layout in the exact order they are declared in the class body. This is guaranteed by the metaclass, which collects field definitions into a plain `dict` (insertion-ordered in Python 3.7+).
 
-When you access `form.bound_fields` you get back an `OrderedDict[str, BoundField]` with the same order.
+When you access `form.bound_fields` you get back a `dict[str, BoundField]` with the same order.
 
 ### Inheritance
 
@@ -166,7 +166,7 @@ print(bf.required)        # True
 print(bf.value)           # None (no data supplied)
 ```
 
-`form.bound_fields` returns the full `OrderedDict[str, BoundField]`:
+`form.bound_fields` returns the full `dict[str, BoundField]`:
 
 ```python
 for name, bf in form.bound_fields.items():

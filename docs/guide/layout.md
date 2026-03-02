@@ -130,12 +130,6 @@ class SearchBar(ControllerAwareLayout):
 
 ### __call__() parameters
 
-`label_style: LabelStyle | None = None`
-:   Has no effect for raw widgets (no label container). Accepted for API symmetry with `simple_layout()`.
-
-`help_style: HelpStyle | None = None`
-:   Has no effect for raw widgets. Accepted for API symmetry with `simple_layout()`.
-
 `disabled: bool | None = None`
 :   Force the widget enabled or disabled.
 
