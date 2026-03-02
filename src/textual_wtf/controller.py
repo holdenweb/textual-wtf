@@ -123,6 +123,15 @@ class FieldController:
         """Register a callback invoked on any error-state change."""
         self._error_listeners.append(callback)
 
+    def remove_error_listener(
+        self, callback: Callable[[bool, list[str]], None]
+    ) -> None:
+        """Deregister a previously registered error-state callback."""
+        try:
+            self._error_listeners.remove(callback)
+        except ValueError:
+            pass
+
     # ── Validation ─────────────────────────────────────────────
 
     def validate(self) -> bool:
@@ -196,17 +205,19 @@ class FieldController:
     def handle_widget_input(self, raw_value: Any, event: str = "change") -> bool:
         """Process a value change originating from the inner widget.
 
-        Updates ``_value`` and runs event validators.  Does **not** fire
-        value listeners (to avoid syncing the value back into the widget that
-        just provided it).  Returns whether the field is currently valid for
-        this event.
+        Updates ``_value``, runs event validators, and notifies error listeners.
+        Does **not** fire value listeners (to avoid syncing the value back into
+        the widget that just provided it).  Returns whether the field is
+        currently valid for this event.
         """
         try:
             self._value = self._field.to_python(raw_value)
         except ValidationError:
             self._value = raw_value
         self.is_dirty = True
-        return self._validate_for(event)
+        result = self._validate_for(event)
+        self._notify_errors()
+        return result
 
     # ── Notification helpers ───────────────────────────────────
 
