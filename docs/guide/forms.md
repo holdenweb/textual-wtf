@@ -141,9 +141,6 @@ form = UserForm(
 `data: dict[str, Any] | None = None`
 :   Initial field values. Keys should match field names.
 
-`layout_class: type[FormLayout] | None = None`
-:   Override the layout class for this instance.
-
 `label_style: LabelStyle | None = None`
 :   Override the form-wide label style.
 
@@ -201,5 +198,5 @@ A form instance is single-use per layout. Once `layout()` has been called (or a 
 ```python
 old_data = form.get_data()
 form = UserForm(data=old_data)
-yield from form.layout()
+yield form.layout()
 ```

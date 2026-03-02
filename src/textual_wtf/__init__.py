@@ -8,6 +8,7 @@ from .exceptions import (
     FormError,
     ValidationError,
 )
+from .field_errors import FieldErrors
 from .field_widget import FieldWidget
 from .fields import (
     BooleanField,
@@ -43,6 +44,7 @@ __all__ = [
     # Runtime
     "BoundField",
     "FieldController",
+    "FieldErrors",
     "FieldWidget",
     # Forms
     "BaseForm",

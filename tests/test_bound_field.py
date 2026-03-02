@@ -274,39 +274,32 @@ class TestBoundFieldCall:
     def test_marks_rendered(self):
         form = ContactForm()
         form.name()
-        assert form.name._rendered is True
+        assert form.name.controller._consumed is True
 
     def test_duplicate_raises(self):
         form = ContactForm()
         form.name()
-        with pytest.raises(FormError, match="already been yielded"):
+        with pytest.raises(FormError, match="already been rendered"):
             form.name()
 
-    def test_overrides_label_style(self):
+    def test_override_disabled_produces_disabled_widget(self):
+        """disabled=True passed to __call__ is forwarded to the raw widget."""
         form = ContactForm()
-        form.name(label_style="beside")
-        assert form.name.label_style == "beside"
+        widget = form.name(disabled=True)
+        assert widget.disabled is True
 
-    def test_overrides_help_style(self):
-        form = ContactForm()
-        form.email(help_style="tooltip")
-        assert form.email.help_style == "tooltip"
-
-    def test_overrides_disabled(self):
-        form = ContactForm()
-        form.name(disabled=True)
-        assert form.name.disabled is True
-
-    def test_no_overrides_keeps_defaults(self):
+    def test_no_overrides_keeps_bind_time_defaults(self):
+        """BoundField.label_style / help_style reflect bind-time cascade, not call-site."""
         form = ContactForm()
         form.name()
         assert form.name.label_style == "above"
         assert form.name.help_style == "below"
 
-    def test_merges_widget_kwargs(self):
+    def test_extra_widget_kwargs_accepted(self):
+        """Extra kwargs are forwarded to the widget without raising."""
         form = ContactForm()
-        form.name(classes="custom-class")
-        assert "classes" in form.name._widget_kwargs
+        widget = form.name(placeholder="Enter name")
+        assert widget is not None
 
 
 # ── simple_layout — returns FieldWidget ─────────────────────────
@@ -323,12 +316,12 @@ class TestSimpleLayout:
     def test_marks_rendered(self):
         form = ContactForm()
         form.email.simple_layout()
-        assert form.email._rendered is True
+        assert form.email.controller._consumed is True
 
     def test_duplicate_raises(self):
         form = ContactForm()
         form.email.simple_layout()
-        with pytest.raises(FormError, match="already been yielded"):
+        with pytest.raises(FormError, match="already been rendered"):
             form.email.simple_layout()
 
     def test_call_then_simple_layout_raises(self):
@@ -337,6 +330,17 @@ class TestSimpleLayout:
         form.age()
         with pytest.raises(FormError):
             form.age.simple_layout()
+
+    def test_overrides_reach_field_widget(self):
+        """Call-site label_style / help_style / disabled are forwarded to FieldWidget."""
+        from textual_wtf.field_widget import FieldWidget
+
+        form = ContactForm()
+        fw = form.email.simple_layout(label_style="beside", help_style="tooltip", disabled=True)
+        assert isinstance(fw, FieldWidget)
+        assert fw._label_style == "beside"
+        assert fw._help_style == "tooltip"
+        assert fw._disabled is True
 
 
 # ── _validate_for — event-scoped validation ─────────────────────

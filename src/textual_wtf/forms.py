@@ -13,7 +13,7 @@ from .fields import Field
 from .types import HelpStyle, LabelStyle
 
 if TYPE_CHECKING:
-    from textual.app import ComposeResult
+    from textual.widget import Widget
 
     from .bound import BoundField
     from .layouts import FormLayout
@@ -169,12 +169,20 @@ class BaseForm(metaclass=FormMetaclass):
             # the cloned field definitions, so this is a no-op in that path.
             if self._instance_required is not None:
                 field = field._with_required(self._instance_required)
-            bf = field.bind(self, name, self._data)
-            # Apply form-level styles where the field didn't explicitly set them
-            if not field._label_style_explicit:
-                bf._label_style = self._instance_label_style
-            if not field._help_style_explicit:
-                bf._help_style = self._instance_help_style
+            # Pass form-level style defaults through bind() so BoundField is
+            # fully initialised in one step.  bind() ignores the cascade value
+            # when the field set its own explicit style.
+            bf = field.bind(
+                self,
+                name,
+                self._data,
+                label_style=(
+                    None if field._label_style_explicit else self._instance_label_style
+                ),
+                help_style=(
+                    None if field._help_style_explicit else self._instance_help_style
+                ),
+            )
             self._bound_fields[name] = bf
 
     # ── Field access ────────────────────────────────────────────
@@ -309,48 +317,47 @@ class BaseForm(metaclass=FormMetaclass):
 
     def layout(
         self,
-        layout: type[FormLayout] | Callable[..., ComposeResult] | None = None,
+        using: type[FormLayout] | Callable[..., Widget] | None = None,
         *,
         id: str | None = None,
-    ) -> ComposeResult:
-        """Yield the widget(s) that render this form.
+    ) -> Widget:
+        """Return the widget that renders this form.
 
-        With no argument, yields a :class:`~textual_wtf.DefaultFormLayout` widget
+        With no argument, returns a :class:`~textual_wtf.DefaultFormLayout` widget
         (fields + Submit/Cancel buttons). The default may be customised by setting
         the :attr:`layout_class` class attribute on the form.
 
-        With a :class:`~textual_wtf.FormLayout` subclass, yields an instance of
+        With a :class:`~textual_wtf.FormLayout` subclass, returns an instance of
         that class wrapping this form.
 
-        With a callable, calls ``layout(self)`` and yields from the result.
-        The callable receives this form instance and should return a
-        ``ComposeResult``.
+        With a callable, calls ``using(form)`` and returns the result.
+        The callable receives this form instance and must return a
+        :class:`~textual.widget.Widget`.
 
         Usage::
 
             # default layout
-            yield from self.form.layout()
+            yield self.form.layout()
 
             # custom Widget subclass
-            yield from self.form.layout(MyTwoColumnLayout)
+            yield self.form.layout(MyTwoColumnLayout)
 
-            # callable
-            def my_layout(form):
-                yield form.name.simple_layout()
-                yield form.email.simple_layout()
+            # callable returning a Widget
+            def my_layout(form) -> Widget:
+                return MyTwoColumnLayout(form=form)
 
-            yield from self.form.layout(my_layout)
+            yield self.form.layout(my_layout)
         """
         import inspect
         from .layouts import DefaultFormLayout
 
-        effective = layout if layout is not None else (
+        effective = using if using is not None else (
             self.__class__.layout_class or DefaultFormLayout
         )
         if inspect.isclass(effective):
-            yield effective(form=self, id=id)
+            return effective(form=self, id=id)
         else:
-            yield from effective(self)
+            return effective(self)
 
 
 class Form(BaseForm):

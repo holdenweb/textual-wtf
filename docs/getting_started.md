@@ -88,7 +88,7 @@ class ContactApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = ContactForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 ```
 
 !!! tip "Store the form instance"
@@ -167,7 +167,7 @@ class ContactApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = ContactForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
     @on(ContactForm.Submitted)
     def on_submitted(self, event: ContactForm.Submitted) -> None:
@@ -197,7 +197,7 @@ Pass a `data` dictionary to the form constructor to pre-populate field values. T
 existing_record = {"name": "Alice", "age": 30, "newsletter": True}
 
 self.form = ContactForm(data=existing_record)
-yield from self.form.layout()
+yield self.form.layout()
 ```
 
 Each key in the dictionary must match a field name. Keys that do not correspond to any field are silently ignored.

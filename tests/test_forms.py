@@ -427,16 +427,19 @@ class TestFormLayoutClass:
         assert CustomForm.layout_class is FormLayout
 
     def test_layout_callable_dispatched(self):
-        """layout() with a callable yields from it rather than instantiating a class."""
-        results = []
+        """layout() with a callable calls it and returns the result directly."""
+        from unittest.mock import MagicMock
+        sentinel = MagicMock()
+        received = []
 
         def my_layout(form):
-            results.append(form)
-            return iter([])
+            received.append(form)
+            return sentinel
 
         form = SimpleForm()
-        list(form.layout(my_layout))  # exhaust the generator
-        assert results == [form]
+        result = form.layout(my_layout)
+        assert received == [form]
+        assert result is sentinel
 
 
 # ── Label style cascade ────────────────────────────────────────

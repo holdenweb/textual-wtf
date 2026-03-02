@@ -63,7 +63,7 @@ class SimpleFormApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = SimpleForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
     def on_base_form_submitted(self, event: BaseForm.Submitted) -> None:
         self.submitted_data = event.form.get_data()
@@ -75,25 +75,25 @@ class SimpleFormApp(App):
 class PrefilledApp(App):
     def compose(self) -> ComposeResult:
         self.form = SimpleForm(data={"name": "Alice", "age": "30"})
-        yield from self.form.layout()
+        yield self.form.layout()
 
 
 class ChoiceApp(App):
     def compose(self) -> ComposeResult:
         self.form = ChoiceForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
 
 class TextApp(App):
     def compose(self) -> ComposeResult:
         self.form = TextForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
 
 class HelpTextApp(App):
     def compose(self) -> ComposeResult:
         self.form = HelpTextForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
 
 class CrossFieldApp(App):
@@ -101,7 +101,7 @@ class CrossFieldApp(App):
 
     def compose(self) -> ComposeResult:
         self.form = CrossFieldForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
     def on_base_form_submitted(self, event: BaseForm.Submitted) -> None:
         self.submitted_data = event.form.get_data()
