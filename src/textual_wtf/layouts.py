@@ -162,7 +162,7 @@ class DefaultFormLayout(ControllerAwareLayout):
             yield Label(title, classes="form-title")
 
         for _name, bf in self.form.bound_fields.items():
-            if not bf.controller._consumed:
+            if not bf.controller.is_consumed:
                 yield bf.simple_layout()
 
         with Horizontal(id="buttons"):

@@ -79,6 +79,11 @@ class FieldController:
 
     # ── Render guard ───────────────────────────────────────────
 
+    @property
+    def is_consumed(self) -> bool:
+        """``True`` once a widget has been produced from this controller."""
+        return self._consumed
+
     def claim(self) -> None:
         """Mark this controller as consumed by a widget.
 
@@ -116,6 +121,13 @@ class FieldController:
     def add_value_listener(self, callback: Callable[[Any], None]) -> None:
         """Register a callback invoked on external value changes."""
         self._value_listeners.append(callback)
+
+    def remove_value_listener(self, callback: Callable[[Any], None]) -> None:
+        """Deregister a previously registered value-change callback."""
+        try:
+            self._value_listeners.remove(callback)
+        except ValueError:
+            pass
 
     def add_error_listener(
         self, callback: Callable[[bool, list[str]], None]

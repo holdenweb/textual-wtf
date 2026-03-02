@@ -289,9 +289,7 @@ class BaseForm(metaclass=FormMetaclass):
             raise FormError(
                 f"{self.__class__.__name__!r} has no field {field_name!r}."
             )
-        bf.controller.errors.append(message)
-        bf.controller.has_error = True
-        bf.controller.error_messages = list(bf.controller.errors)
+        bf.controller.add_error(message)
         self._clean_form_errored = True
 
     def _sync_field_error_listeners(self) -> None:

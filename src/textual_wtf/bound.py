@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from .controller import FieldController
 from .exceptions import FormError
 from .types import HelpStyle, LabelStyle
 
 if TYPE_CHECKING:
+    from textual.app import ComposeResult
     from textual.widget import Widget
 
     from .fields import Field
     from .forms import BaseForm
+    from .validators import Validator
 
 
 class BoundField:
@@ -89,12 +91,12 @@ class BoundField:
 
     @property
     def label_style(self) -> LabelStyle:
-        """Bind-time resolved label style (form default > field explicit)."""
+        """Bind-time resolved label style (field explicit > form default)."""
         return self._label_style
 
     @property
     def help_style(self) -> HelpStyle:
-        """Bind-time resolved help style (form default > field explicit)."""
+        """Bind-time resolved help style (field explicit > form default)."""
         return self._help_style
 
     @property
@@ -103,7 +105,7 @@ class BoundField:
         return self._field.disabled
 
     @property
-    def validators(self) -> list:
+    def validators(self) -> list[Validator]:
         return self._field.validators
 
     # ── Value / error state (proxied to controller) ───────────────
@@ -193,7 +195,7 @@ class BoundField:
         help_style: HelpStyle | None = None,
         disabled: bool | None = None,
         required: bool | None = None,
-        renderer: Any | None = None,
+        renderer: Callable[[BoundField], ComposeResult] | None = None,
         **widget_kwargs: Any,
     ) -> Any:  # returns FieldWidget, typed as Any to avoid circular import
         """Return a :class:`~textual_wtf.FieldWidget` (label + input + help + error).
@@ -236,12 +238,6 @@ class BoundField:
     def validate(self) -> bool:
         """Validate this field (submit path).  Fires error listeners."""
         return self.controller.validate()
-
-    def _validate_for(self, event: str) -> bool:
-        """Event-scoped validation.  Fires error listeners."""
-        result = self.controller._validate_for(event)
-        self.controller._notify_errors()
-        return result
 
     # ── Inner widget construction ─────────────────────────────────
 

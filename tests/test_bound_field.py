@@ -343,7 +343,7 @@ class TestSimpleLayout:
         assert fw._disabled is True
 
 
-# ── _validate_for — event-scoped validation ─────────────────────
+# ── validate_for — event-scoped validation ──────────────────────
 
 
 class TestValidateFor:
@@ -353,7 +353,7 @@ class TestValidateFor:
 
         form = F()
         form.name.value = ""
-        assert form.name._validate_for("change") is True
+        assert form.name.controller.validate_for("change") is True
         assert form.name.has_error is False
 
     def test_blur_triggers_required(self):
@@ -362,7 +362,7 @@ class TestValidateFor:
 
         form = F()
         form.name.value = ""
-        assert form.name._validate_for("blur") is False
+        assert form.name.controller.validate_for("blur") is False
         assert form.name.has_error is True
         assert any("required" in e.lower() for e in form.name.errors)
 
@@ -371,7 +371,7 @@ class TestValidateFor:
             tag = StringField("Tag", max_length=5)
 
         form = F(data={"tag": "toolongstring"})
-        assert form.tag._validate_for("change") is False
+        assert form.tag.controller.validate_for("change") is False
         assert form.tag.has_error is True
 
     def test_change_does_not_trigger_min_length(self):
@@ -379,7 +379,7 @@ class TestValidateFor:
             name = StringField("Name", min_length=5)
 
         form = F(data={"name": "ab"})
-        assert form.name._validate_for("change") is True
+        assert form.name.controller.validate_for("change") is True
         assert form.name.has_error is False
 
     def test_blur_triggers_min_length(self):
@@ -387,7 +387,7 @@ class TestValidateFor:
             name = StringField("Name", min_length=5)
 
         form = F(data={"name": "ab"})
-        assert form.name._validate_for("blur") is False
+        assert form.name.controller.validate_for("blur") is False
         assert form.name.has_error is True
         assert any("at least 5" in e for e in form.name.errors)
 
@@ -396,7 +396,7 @@ class TestValidateFor:
             name = StringField("Name", required=True, min_length=5)
 
         form = F(data={"name": "ab"})
-        assert form.name._validate_for("change") is True
+        assert form.name.controller.validate_for("change") is True
         assert form.name.validate() is False
         assert any("at least 5" in e for e in form.name.errors)
 
@@ -407,7 +407,7 @@ class TestValidateFor:
         form1 = F(data={"code": "ab"})
         form2 = F(data={"code": "ab"})
         result_via_validate = form1.code.validate()
-        result_via_event = form2.code._validate_for("submit")
+        result_via_event = form2.code.controller.validate_for("submit")
         assert result_via_validate == result_via_event
         assert form1.code.errors == form2.code.errors
 
@@ -416,11 +416,11 @@ class TestValidateFor:
             tag = StringField("Tag", max_length=5)
 
         form = F(data={"tag": "toolong"})
-        form.tag._validate_for("change")
+        form.tag.controller.validate_for("change")
         assert form.tag.has_error is True
 
         form.tag.value = "ok"
-        assert form.tag._validate_for("change") is True
+        assert form.tag.controller.validate_for("change") is True
         assert form.tag.has_error is False
         assert form.tag.errors == []
 
@@ -429,7 +429,7 @@ class TestValidateFor:
             tag = StringField("Tag", min_length=3)
 
         form = F()
-        assert form.tag._validate_for("blur") is True
+        assert form.tag.controller.validate_for("blur") is True
         assert form.tag.has_error is False
 
     def test_blur_collects_errors_from_multiple_validators(self):
@@ -441,7 +441,7 @@ class TestValidateFor:
             code = StringField("Code", min_length=4, validators=[no_digits])
 
         form = F(data={"code": "ab1"})
-        assert form.code._validate_for("blur") is False
+        assert form.code.controller.validate_for("blur") is False
         assert len(form.code.errors) >= 2
 
 
