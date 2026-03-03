@@ -161,6 +161,12 @@ class StringField(Field):
     ) -> None:
         super().__init__(label, **kwargs)
         self._add_length_validators(min_length, max_length)
+        # Pass max_length to the underlying Input widget so characters beyond
+        # the limit are rejected at the widget level rather than shown as a
+        # validation error.  The MaxLength validator is still added for the
+        # submit path and to catch pre-populated values that exceed the limit.
+        if max_length is not None:
+            self.widget_kwargs.setdefault("max_length", max_length)
 
 
 class IntegerField(Field):

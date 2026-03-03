@@ -127,9 +127,11 @@ class ValidatorGalleryForm(Form):
     slug = StringField(
         "URL slug",
         validators=[must_be_slug],
+        restrict=r"[a-z0-9-]*",
         help_text=(
             "FunctionValidator (plain function) — "
-            "only lowercase letters, digits, and hyphens"
+            "only lowercase letters, digits, and hyphens; "
+            "invalid characters are rejected at the widget level"
         ),
     )
     password = StringField(

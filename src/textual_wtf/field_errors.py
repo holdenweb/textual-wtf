@@ -34,6 +34,7 @@ class FieldErrors(Label):
         color: $error;
         display: none;
         height: auto;
+        width: 1fr;
         margin-top: 0;
         padding-left: 1;
     }
