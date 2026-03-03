@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import VerticalScroll
+from textual.message import Message
 from textual.screen import Screen
 from textual.widgets import ListItem, ListView, Static
+
+
+HOVER_DEFAULT = (
+    "Hover over a demo program to find out what it does.  Click to run it."
+)
 
 
 @dataclass
@@ -20,11 +27,36 @@ class DemoEntry:
     screen_class: type  # a Screen subclass
 
 
+class DemoListItem(ListItem):
+    """Single-line list item that announces mouse-enter and mouse-leave."""
+
+    class Hovered(Message):
+        """Posted when the mouse enters this item."""
+
+        def __init__(self, index: int) -> None:
+            super().__init__()
+            self.index = index
+
+    class Left(Message):
+        """Posted when the mouse leaves this item."""
+
+    def __init__(self, index: int, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._index = index
+
+    def on_enter(self) -> None:
+        self.post_message(self.Hovered(self._index))
+
+    def on_leave(self) -> None:
+        self.post_message(self.Left())
+
+
 class ChooserScreen(Screen):
     """The demo-chooser screen.
 
-    Shows a titled panel listing all available demos.  Press Enter (or click)
-    on an item to push that demo's Screen; press Escape to quit.
+    Shows a titled panel with a scrollable list of demo names.  Hovering
+    over an item (or navigating with ↑↓) reveals its description in the
+    panel below the list.  Press Enter or click to run a demo; Escape quits.
     """
 
     BINDINGS = [Binding("escape", "quit", "Quit")]
@@ -51,28 +83,24 @@ class ChooserScreen(Screen):
         margin-bottom: 1;
     }
 
-    #chooser-subtitle {
-        text-align: center;
-        color: $text-muted;
-        margin-bottom: 1;
-    }
-
     ListView {
         height: auto;
+        max-height: 12;
         border: solid $accent;
     }
 
-    ListItem {
+    DemoListItem {
+        height: 1;
         padding: 0 1;
-        height: auto;
     }
 
-    .item-title {
-        text-style: bold;
-    }
-
-    .item-desc {
+    #demo-description {
+        height: 4;
+        margin-top: 1;
+        border: solid $panel;
+        padding: 0 1;
         color: $text-muted;
+        background: $surface;
     }
 
     #chooser-hint {
@@ -87,22 +115,42 @@ class ChooserScreen(Screen):
         self._demos = demos
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="chooser-panel"):
+        with VerticalScroll(id="chooser-panel"):
             yield Static("textual-wtf Form Demos", id="chooser-title")
-            yield Static("Select a demo to run", id="chooser-subtitle")
             with ListView(id="demo-list"):
-                for entry in self._demos:
-                    with ListItem():
-                        yield Static(entry.title, classes="item-title")
-                        yield Static(entry.description, classes="item-desc")
+                for i, entry in enumerate(self._demos):
+                    with DemoListItem(i):
+                        yield Static(entry.title)
+            yield Static(HOVER_DEFAULT, id="demo-description")
             yield Static(
                 "↑↓ navigate  •  Enter / click to open  •  Escape to quit",
                 id="chooser-hint",
             )
 
+    def _show_description(self, index: int | None) -> None:
+        """Update the description panel; pass None to restore the default prompt."""
+        text = (
+            self._demos[index].description
+            if index is not None
+            else HOVER_DEFAULT
+        )
+        self.query_one("#demo-description", Static).update(text)
+
     def action_quit(self) -> None:
         """Exit the application."""
         self.app.exit()
+
+    def on_demo_list_item_hovered(self, event: DemoListItem.Hovered) -> None:
+        """Show the description for whichever item the mouse is over."""
+        self._show_description(event.index)
+
+    def on_demo_list_item_left(self, event: DemoListItem.Left) -> None:
+        """Revert to the default prompt when the mouse leaves a list item."""
+        self._show_description(None)
+
+    def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+        """Show the description for the keyboard-highlighted item."""
+        self._show_description(event.list_view.index)
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Push the selected demo screen onto the stack."""
