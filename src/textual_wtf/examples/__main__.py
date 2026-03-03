@@ -52,8 +52,6 @@ DEMOS: list[DemoEntry] = [
 class FormDemoApp(App[None]):
     """TUI demo app for textual-wtf form components."""
 
-    CSS_PATH = "__main__.css"
-
     TITLE = "Forms Demonstrator"
 
     def on_mount(self) -> None:
