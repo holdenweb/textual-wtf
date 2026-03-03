@@ -12,6 +12,9 @@ license = { text = "MIT" }
 authors = [{ name = "Steve Holden" }]
 dependencies = ["textual>=0.47.0"]
 
+[project.scripts]
+textual-wtf-demo = "textual_wtf.examples.__main__:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/textual_wtf"]
 
