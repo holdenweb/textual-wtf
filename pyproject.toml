@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "textual-wtf"
-version = "0.10.0a2"
+version = "0.10.0a3"
 description = "Declarative forms library for Textual TUI applications"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ authors = [{ name = "Steve Holden" }]
 dependencies = ["textual>=0.47.0"]
 
 [project.scripts]
-textual-wtf-demo = "textual_wtf.examples.__main__:main"
+textual-wtf = "textual_wtf.examples.__main__:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/textual_wtf"]
