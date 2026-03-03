@@ -27,6 +27,11 @@ Demonstrates:
 - The right panel shows the original settings and (after saving) the newly
   saved settings, making the data round-trip visible.
 
+- ``label_style = "placeholder"`` on each form class moves field labels into
+  the ``Input`` placeholder, removing the above-label row for text inputs and
+  saving vertical space.  ``help_style = "tooltip"`` moves ``help_text`` off
+  the screen entirely — it appears as a hover tooltip instead.
+
 Run with: python -m examples  (select "Tabbed Settings")
 """
 
@@ -80,6 +85,8 @@ class ProfileForm(Form):
 
     title = "Profile"
     layout_class = SettingsTabLayout
+    label_style = "placeholder"
+    help_style = "tooltip"
 
     username = StringField(
         "Username",
@@ -105,6 +112,8 @@ class PreferencesForm(Form):
 
     title = "Preferences"
     layout_class = SettingsTabLayout
+    label_style = "placeholder"
+    help_style = "tooltip"
 
     theme = ChoiceField(
         "Theme",
@@ -128,6 +137,8 @@ class AccessibilityForm(Form):
 
     title = "Accessibility"
     layout_class = SettingsTabLayout
+    label_style = "placeholder"
+    help_style = "tooltip"
 
     high_contrast = BooleanField(
         "High contrast mode",
