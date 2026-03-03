@@ -1,81 +1,31 @@
 # textual-wtf
 
-Declarative forms library for [Textual](https://textual.textualize.io/) TUI applications.
+**Declarative, validated forms for [Textual](https://textual.textualize.io/) TUI applications.**
 
-This is a complete revision of the library to improve maintainability,
-consistency and usability for developers. While still technically pre-release
-you can now write code with reasonable confidence that it's not going to need
-too many changes in the future.
+Write a Python class; get a fully-featured form — rendered, validated, and data-bound — with no boilerplate.
 
-## Major improvements in this release
+📖 **Full documentation, guides and API reference:** [holdenweb.com/textual-wtf](https://holdenweb.com/textual-wtf)
 
-### Decoupled Form class and instances from the widget hierarchy
-
-Form instances are now properly constructed, creating a `BoundField`
-for each `Field` in the class definition to hold the instance-specific
-data and remove the confusing sharing of class attributes.
-`BoundField` became a plain Python object rather than a Textual widget.
-A separate `FieldController` now owns all mutable state (value, errors, dirty flag, listeners),
-and a new `FieldWidget` (`Container`) handles the Textual-side composition.
-This separation makes `BoundField` usable outside a mounted app — for testing and programmatic
-validation — and eliminates the fragility of mixing reactive state with widget lifetime.
-
-### `simple_layout()` / `__call__()` rendering split
-
-`BoundField` now offers two rendering modes: `simple_layout()` returns a fully composed
-`FieldWidget` (label + input + help + error chrome), while `__call__()` returns just the
-raw inner widget for full layout freedom. Both accept per-render overrides for
-`label_style`, `help_style`, `disabled`, and `required`.
-
-### `label_style` and `help_style`
-
-Three label modes (`"above"`, `"beside"`, `"placeholder"`) and two help-text modes
-(`"below"`, `"tooltip"`) are configurable at form class, form instance, field, and
-render-call levels.
-
-### Unified validation on the Textual `Validator` pattern
-
-Validators became proper `Validator` subclasses with `validate()` methods.
-Convenience kwargs (`required=`, `min_length=`, `max_length=`, `min_value=`, `max_value=`)
-were added to field constructors. Event-scoped validation (`validate_on`) lets validators
-fire only on blur, change, or submit.
-
-### Form instance embedding
-
-`ComposedForm` markers replaced with direct assignment of `Form` instances as class
-attributes, with a `required=` cascade: field-level explicit pin → form class attribute →
-form instance kwarg → render kwarg.
-
-### `TabbedForm` widget
-
-A `Widget` taking sub-forms and rendering each in a `TabPane` via `TabbedContent`.
-Tab labels turn `$error` colour when any field in that tab has a validation error.
-
-### `title=` kwarg on `BaseForm`
-
-Instance-level title override, used as the `TabbedForm` tab label and as a heading
-in `DefaultFormLayout`.
-
-### Example code and MkDocs documentation
-
-A small multi-screen demo app and a complete MkDocs + Material docs site:
-two guide sections (7 pages), API reference with mkdocstrings (7 pages), and
-how-to recipes (4 pages).
-
+---
 
 ## Installation
 
 ```bash
-uv sync
+pip install textual-wtf
 ```
 
-## Running tests
+## Try the demo
 
 ```bash
-uv run pytest -v
+textual-wtf-demo                 # if installed via pip
+python -m textual_wtf.examples   # from a source checkout
 ```
 
+---
+
 ## Quick start
+
+Define a form class, call `.layout()` to render it, and handle the `Submitted` message:
 
 ```python
 from textual.app import App, ComposeResult
@@ -84,20 +34,20 @@ from textual_wtf.forms import BaseForm
 
 
 class ContactForm(Form):
-    title = "Contact"
-    name = StringField("Name", required=True)
-    age = IntegerField("Age", min_value=0, max_value=150)
-    active = BooleanField("Active")
+    name       = StringField("Name",  required=True, max_length=80)
+    age        = IntegerField("Age",  min_value=0, max_value=150)
+    newsletter = BooleanField("Subscribe to newsletter")
 
 
 class MyApp(App):
     def compose(self) -> ComposeResult:
         self.form = ContactForm()
-        yield self.form.build_layout()
+        yield self.form.layout()
 
+    # Handler name comes from BaseForm.Submitted — Form inherits it unchanged.
     def on_base_form_submitted(self, event: BaseForm.Submitted) -> None:
-        data = event.form.get_data()
-        self.notify(f"Submitted: {data}")
+        data = event.form.get_data()   # {"name": "…", "age": 42, "newsletter": False}
+        self.notify(f"Received: {data}")
 
     def on_base_form_cancelled(self, event: BaseForm.Cancelled) -> None:
         self.exit()
@@ -107,51 +57,169 @@ if __name__ == "__main__":
     MyApp().run()
 ```
 
-## Embedded forms
+**Enter** submits; **Escape** cancels. Validation runs automatically: `required` fields
+and range/length constraints are checked on blur and on submit, and any field with an
+error displays its message directly beneath the input.
+
+---
+
+## Field types
+
+| Class | Textual widget | Key kwargs |
+|---|---|---|
+| `StringField` | `Input` | `required`, `min_length`, `max_length` |
+| `IntegerField` | `Input` (digits only) | `required`, `min_value`, `max_value` |
+| `BooleanField` | `Checkbox` | — |
+| `ChoiceField`  | `Select` | `choices` |
+| `TextField`    | `TextArea` | `max_length` |
+
+All fields accept `help_text=` and a `validators=` list.  Extra keyword arguments
+are forwarded directly to the underlying Textual widget — for example
+`StringField("Password", password=True)` gives you a masked input.
+
+---
+
+## Label and help-text styles
+
+Control where labels and help text appear at form-class, form-instance, field, or
+per-render-call level:
+
+```python
+class CompactForm(Form):
+    label_style = "placeholder"   # "above" (default) | "beside" | "placeholder"
+    help_style  = "tooltip"       # "below" (default) | "tooltip"
+
+    username = StringField("Username", help_text="3–30 characters")
+    email    = StringField("Email",    help_text="Used for notifications")
+```
+
+`"placeholder"` folds the label into the `Input` placeholder — saving a full row per
+text field.  `"tooltip"` moves help text off the screen and onto a hover tooltip.
+
+---
+
+## Embedded sub-forms
+
+Assign a `Form` instance as a class attribute and its fields are flattened into the
+parent with a prefix:
 
 ```python
 class AddressForm(Form):
-    street = StringField("Street")
-    city = StringField("City")
+    street = StringField("Street", required=True)
+    city   = StringField("City",   required=True)
+
 
 class OrderForm(Form):
-    billing = AddressForm()
-    shipping = AddressForm()
-    notes = TextField("Notes")
+    billing  = AddressForm()
+    shipping = AddressForm(required=False)
+    notes    = TextField("Notes")
 ```
+
+Fields become `billing_street`, `billing_city`, `shipping_street`, … and
+`get_data()` / `set_data()` work on the merged flat namespace.
+
+---
 
 ## Cross-field validation
 
-Override `clean_form()` for validation that spans multiple fields:
+Override `clean_form()` for validation that spans more than one field:
 
 ```python
-class PasswordForm(Form):
-    password = StringField("Password", required=True)
-    confirm = StringField("Confirm", required=True)
+class PasswordChangeForm(Form):
+    current = StringField("Current password", required=True, password=True)
+    new     = StringField("New password",     required=True, password=True)
+    confirm = StringField("Confirm",          required=True, password=True)
 
-    def clean_form(self):
-        if self.password.value != self.confirm.value:
+    def clean_form(self) -> bool:
+        if self.new.value == self.current.value:
+            self.add_error("new", "New password must differ from current")
+            return False
+        if self.new.value != self.confirm.value:
             self.add_error("confirm", "Passwords do not match")
             return False
         return True
 ```
 
+`add_error(field_name, message)` attaches the error to the named field and marks it
+visible in the UI.
+
+---
+
+## Multi-tab forms
+
+```python
+from textual_wtf import TabbedForm
+
+class SettingsScreen(Screen):
+    def compose(self) -> ComposeResult:
+        yield TabbedForm(ProfileForm(), PreferencesForm(), AccessibilityForm())
+```
+
+Tab labels turn red when a tab contains a validation error, guiding the user to the
+problem without them having to click through every tab.
+
+---
+
 ## Custom layouts
 
-Subclass `FormLayout` and override `compose()`:
+Subclass `ControllerAwareLayout` and override `compose()`.  Access the current form
+as `self.form`; use `bf.simple_layout()` for the full label + input + error chrome,
+or call `bf()` for the raw Textual widget alone:
 
 ```python
 from textual.containers import Horizontal
 from textual.widgets import Button
-from textual_wtf import FormLayout
+from textual_wtf import ControllerAwareLayout
 
-class TwoColumnLayout(FormLayout):
+
+class TwoColumnLayout(ControllerAwareLayout):
     def compose(self):
         with Horizontal():
-            yield self.form.first_name.simple_layout(label_style="above")
-            yield self.form.last_name.simple_layout(label_style="above")
+            yield self.form.first_name.simple_layout()
+            yield self.form.last_name.simple_layout()
         yield self.form.email.simple_layout()
         with Horizontal(id="buttons"):
             yield Button("Submit", id="submit", variant="primary")
             yield Button("Cancel", id="cancel")
 ```
+
+---
+
+## Custom validators
+
+Subclass `Validator` and raise `ValidationError` when the value is invalid:
+
+```python
+from textual_wtf.validators import Validator, ValidationError
+
+
+class StrongPassword(Validator):
+    def validate(self, value: str) -> None:
+        if not any(c.isdigit() for c in value):
+            raise ValidationError("Must contain at least one digit")
+        if not any(c.isupper() for c in value):
+            raise ValidationError("Must contain at least one uppercase letter")
+
+
+class SignupForm(Form):
+    password = StringField("Password", required=True,
+                           validators=[StrongPassword()])
+```
+
+Plain functions also work — wrap them in `validators=[my_function]` and they are
+promoted to `FunctionValidator` automatically.
+
+---
+
+## Development setup
+
+```bash
+git clone https://github.com/holdenweb/textual-wtf
+cd textual-wtf
+uv sync
+uv run pytest
+```
+
+---
+
+📖 **Guides · API reference · how-to recipes:** [holdenweb.com/textual-wtf](https://holdenweb.com/textual-wtf)
