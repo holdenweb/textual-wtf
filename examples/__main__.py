@@ -7,30 +7,42 @@ Run with:
 from textual.app import App
 
 from .chooser_screen import ChooserScreen, DemoEntry
-from .embedded_forms_demo import EmbeddedFormsDemoScreen
+from .form_composition_demo import FormCompositionDemoScreen
 from .interactive_layout_demo import InteractiveDemoScreen
-from .layout_options_demo import LayoutOptionsDemoScreen
-from .simple_rendered_form import SimpleRenderedFormScreen
+from .password_change_demo import PasswordChangeDemoScreen
+from .rendering_modes_demo import RenderingModesDemoScreen
+from .tabbed_settings_demo import TabbedSettingsDemoScreen
+from .validator_gallery_demo import ValidatorGalleryDemoScreen
 
 
 DEMOS: list[DemoEntry] = [
     DemoEntry(
-        title="Simple Rendered Form",
-        description="Form.layout() with Submitted/Cancelled handling",
-        screen_class=SimpleRenderedFormScreen,
+        title="Rendering Modes",
+        description="form.layout() vs simple_layout() vs bf() + FieldErrors, side by side",
+        screen_class=RenderingModesDemoScreen,
     ),
     DemoEntry(
-        title="Layout Options Demo",
-        description="Three layout styles (above / beside / placeholder) side-by-side",
-        screen_class=LayoutOptionsDemoScreen,
+        title="Form Composition",
+        description="Embedded sub-forms; prefixed fields; copy-billing-to-shipping",
+        screen_class=FormCompositionDemoScreen,
     ),
     DemoEntry(
-        title="Embedded Forms",
-        description="Two forms side by side; inspect any field by name",
-        screen_class=EmbeddedFormsDemoScreen,
+        title="Validator Gallery",
+        description="Required, MinLength, MaxLength, EmailValidator, FunctionValidator, custom Validator",
+        screen_class=ValidatorGalleryDemoScreen,
     ),
     DemoEntry(
-        title="Interactive Layout Demo",
+        title="Password Change",
+        description="Cross-field validation via clean_form() and add_error()",
+        screen_class=PasswordChangeDemoScreen,
+    ),
+    DemoEntry(
+        title="Tabbed Settings",
+        description="TabbedForm with set_data() pre-population and get_data() round-trip",
+        screen_class=TabbedSettingsDemoScreen,
+    ),
+    DemoEntry(
+        title="Interactive Layout",
         description="Switch label/help styles in real-time with radio buttons",
         screen_class=InteractiveDemoScreen,
     ),

@@ -37,38 +37,7 @@ class DemoForm(Form):
 class InteractiveDemoScreen(ExampleScreen):
     """Single form whose label and help-text styles are controlled by radio sets."""
 
-    CSS = """
-    InteractiveDemoScreen {
-        layout: horizontal;
-    }
-
-    #form-col {
-        width: 2fr;
-        height: auto;
-        padding: 1 2;
-    }
-
-    #controls-col {
-        width: 1fr;
-        height: auto;
-        padding: 1 2;
-        border-left: solid $accent;
-        background: $surface;
-    }
-
-    .control-label {
-        text-style: bold;
-        margin-top: 1;
-    }
-
-    RadioSet {
-        height: auto;
-        border: none;
-        background: transparent;
-        padding: 0;
-        margin-bottom: 1;
-    }
-    """
+    CSS_PATH = """ids.css"""
 
     def compose(self) -> ComposeResult:
         self._label_style = "above"
