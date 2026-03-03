@@ -57,3 +57,14 @@ validation time (reading values and errors).
       show_source: false
       filters:
         - "!^_"
+
+---
+
+## FieldErrors
+
+::: textual_wtf.field_errors.FieldErrors
+    options:
+      show_root_heading: true
+      show_source: false
+      filters:
+        - "!^_"

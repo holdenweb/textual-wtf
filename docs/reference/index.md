@@ -10,6 +10,7 @@ Complete API documentation for every public class, method, and attribute in text
 | [Fields](fields.md) | `Field`, `StringField`, `IntegerField`, `BooleanField`, `ChoiceField`, `TextField` |
 | [Validators](validators.md) | `Validator`, `Required`, `MinLength`, `MaxLength`, `MinValue`, `MaxValue`, `EmailValidator`, `FunctionValidator` |
 | [Layouts](layouts.md) | `FormLayout`, `ControllerAwareLayout`, `DefaultFormLayout` |
+| [Runtime objects](bound_field.md) | `BoundField`, `FieldController`, `FieldWidget`, `FieldErrors` |
 | [TabbedForm](tabbed_form.md) | `TabbedForm` |
 | [Exceptions](exceptions.md) | `ValidationError`, `FieldError`, `FormError`, `AmbiguousFieldError` |
 
@@ -49,6 +50,7 @@ from textual_wtf import (
     # Runtime types
     BoundField,
     FieldController,
+    FieldErrors,
     FieldWidget,
 
     # Exceptions

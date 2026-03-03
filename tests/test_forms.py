@@ -267,9 +267,7 @@ class TestFormClean:
 
             def clean_form(self):
                 if self.password.value != self.confirm.value:
-                    self.confirm.errors = ["Passwords do not match"]
-                    self.confirm.has_error = True
-                    self.confirm.error_messages = ["Passwords do not match"]
+                    self.add_error("confirm", "Passwords do not match")
                     return False
                 return True
 

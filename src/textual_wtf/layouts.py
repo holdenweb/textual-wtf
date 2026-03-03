@@ -67,6 +67,36 @@ class FormLayout(VerticalScroll):
             self.post_message(
                 BaseForm.Submitted(layout=self, form=self.form)
             )
+        else:
+            self._focus_first_error()
+
+    def _focus_first_error(self) -> None:
+        """Move keyboard focus to the first widget that has a validation error.
+
+        Iterates over bound fields in declaration order and focuses the inner
+        widget of the first field whose controller reports an error.  Handles
+        both the ``simple_layout()`` path (the field lives inside a
+        ``FieldWidget``) and the raw ``bf()`` path (the widget has
+        ``._field_controller`` stamped on it by ``BoundField.__call__``).
+        """
+        from .field_widget import FieldWidget
+
+        # Build a BoundField → FieldWidget lookup in one pass.
+        fw_map = {fw.bound_field: fw for fw in self.query(FieldWidget)}
+
+        for bf in self.form.bound_fields.values():
+            if not bf.controller.has_error:
+                continue
+            # simple_layout() path: field rendered inside a FieldWidget.
+            fw = fw_map.get(bf)
+            if fw is not None and fw._inner_widget is not None:
+                fw._inner_widget.focus()
+                return
+            # bf() path: raw widget stamped with ._field_controller.
+            for widget in self.query("*"):
+                if getattr(widget, "_field_controller", None) is bf.controller:
+                    widget.focus()
+                    return
 
     def _do_cancel(self) -> None:
         self.post_message(
@@ -162,7 +192,7 @@ class DefaultFormLayout(ControllerAwareLayout):
             yield Label(title, classes="form-title")
 
         for _name, bf in self.form.bound_fields.items():
-            if not bf.controller._consumed:
+            if not bf.controller.is_consumed:
                 yield bf.simple_layout()
 
         with Horizontal(id="buttons"):

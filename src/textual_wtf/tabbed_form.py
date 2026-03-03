@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, TYPE_CHECKING
 
-from textual.css.query import NoMatches
 from textual.widget import Widget
 from textual.widgets import Tab, TabbedContent, TabPane
 
@@ -88,10 +87,7 @@ class TabbedForm(Widget):
             bf.controller.has_error for bf in form.bound_fields.values()
         )
         try:
-            tab = self.query_one(f"Tab#{pane_id}", Tab)
-            if has_any_error:
-                tab.add_class("has-error")
-            else:
-                tab.remove_class("has-error")
-        except NoMatches:
+            tab = self.query_one(TabbedContent).get_tab(pane_id)
+            tab.set_class(has_any_error, "has-error")
+        except Exception:
             pass

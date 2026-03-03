@@ -216,7 +216,7 @@ class NumberForm(Form):
 class NumberApp(App):
     def compose(self) -> ComposeResult:
         self.form = NumberForm()
-        yield from self.form.layout()
+        yield self.form.layout()
 
     @on(NumberForm.Submitted)
     def on_submitted(self, event: NumberForm.Submitted) -> None:

@@ -111,4 +111,4 @@ DefaultFormLayout {
 
 ### Unrendered guard
 
-`DefaultFormLayout.compose()` skips any field that has already been rendered (`bf._rendered is True`). This lets you render some fields manually in a custom section before calling `form.layout()`, though mixing the two approaches in the same form is unusual.
+`DefaultFormLayout.compose()` skips any field that has already been rendered (`bf.controller.is_consumed` is `True`). This lets you render some fields manually in a custom section before calling `form.layout()`, though mixing the two approaches in the same form is unusual.

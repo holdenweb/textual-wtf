@@ -33,6 +33,5 @@ class AmbiguousFieldError(Exception):
     def __init__(self, name: str, candidates: list[str]) -> None:
         self.name = name
         self.candidates = candidates
-        super().__init__(
-            f"Ambiguous field name {name!r}: matches {candidates}"
-        )
+        self.message = f"Ambiguous field name {name!r}: matches {candidates}"
+        super().__init__(self.message)

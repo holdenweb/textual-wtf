@@ -68,6 +68,10 @@ class InteractiveDemoScreen(ExampleScreen):
         padding: 0;
         margin-bottom: 1;
     }
+
+    Input {
+        border: round blue;
+    }
     """
 
     def compose(self) -> ComposeResult:
