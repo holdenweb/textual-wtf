@@ -100,6 +100,10 @@ class ChooserScreen(Screen):
                 id="chooser-hint",
             )
 
+    def action_quit(self) -> None:
+        """Exit the application."""
+        self.app.exit()
+
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Push the selected demo screen onto the stack."""
         index = event.list_view.index
