@@ -17,7 +17,8 @@ pip install textual-wtf
 ## Try the demo
 
 ```bash
-textual-wtf-demo                 # if installed via pip
+uvx textual-wtf                  # before installation
+textual-wtf                      # if installed in an active venv
 python -m textual_wtf.examples   # from a source checkout
 ```
 
