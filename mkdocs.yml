@@ -1,8 +1,8 @@
 site_name: textual-wtf
 site_description: Declarative forms library for Textual TUI applications
-site_url: https://textualize.github.io/textual-wtf/
-repo_url: https://github.com/Textualize/textual-wtf
-repo_name: Textualize/textual-wtf
+site_url: https://github.com/holdenweb/textual-wtf/
+repo_url: https://github.com/holdenweb/textual-wtf
+repo_name: holdenweb/textual-wtf
 edit_uri: edit/main/docs/
 
 theme:
